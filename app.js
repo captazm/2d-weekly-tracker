@@ -655,10 +655,10 @@ function renderMonthHighlights(weeks, year, month, monthTotal, monthWeeks) {
 
   const items = [
     { label: 'လ စုစုပေါင်း', value: monthTotal, sign: true },
-    { label: 'ပတ်အရေအတွက်', value: monthWeeks, sign: false },
+    { label: 'သီတင်းပတ်အရေအတွက်', value: monthWeeks, sign: false },
   ];
-  if (bestWeek) items.push({ label: '🏆 အကောင်းဆုံးပတ်', value: bestWeek.pl, sign: true, sub: bestWeek.week.weekStart });
-  if (worstWeek && worstWeek !== bestWeek) items.push({ label: '📉 အရှုံးအများဆုံးပတ်', value: worstWeek.pl, sign: true, sub: worstWeek.week.weekStart });
+  if (bestWeek) items.push({ label: '🏆 အကောင်းဆုံးသီတင်းပတ်', value: bestWeek.pl, sign: true, sub: bestWeek.week.weekStart });
+  if (worstWeek && worstWeek !== bestWeek) items.push({ label: '📉 အရှုံးအများဆုံးသီတင်းပတ်', value: worstWeek.pl, sign: true, sub: worstWeek.week.weekStart });
   if (monthWeeks > 0) items.push({ label: 'ပျမ်းမျှ', value: Math.round(monthTotal / monthWeeks), sign: true });
 
   highlights.innerHTML = items.map(it => `
@@ -705,7 +705,7 @@ async function renderMonthly() {
     <div class="label">${MONTH_NAMES[month]} ${year}</div>
     <div class="value">— data မရှိ —</div>
   ` : `
-    <div class="label">${MONTH_NAMES[month]} ${year} — စုစုပေါင်း ${weeksInMonth.length} ပတ်</div>
+    <div class="label">${MONTH_NAMES[month]} ${year} — စုစုပေါင်း ${weeksInMonth.length} သီတင်းပတ်</div>
     <div class="value">${fmtSigned(totPL)}</div>
     <div class="breakdown">
       <div>ရောင်းရငွေ<span class="v">${fmt(totBet)}</span></div>
@@ -713,13 +713,13 @@ async function renderMonthly() {
       <div>လျော်<span class="v">${fmt(totPay)}</span></div>
     </div>
   `;
-  document.getElementById('monMonthSub').textContent = weeksInMonth.length > 0 ? `${weeksInMonth.length} ပတ်` : '';
+  document.getElementById('monMonthSub').textContent = weeksInMonth.length > 0 ? `${weeksInMonth.length} သီတင်းပတ်` : '';
   document.getElementById('monMonthSub').className = 'month-sub';
 
   // Week breakdown
   const breakdown = document.getElementById('weekBreakdown');
   if (weeksInMonth.length === 0) {
-    breakdown.innerHTML = '<p style="color:#9ca3af;font-size:12px;text-align:center;padding:12px;">ပတ်များ မရှိသေးပါ</p>';
+    breakdown.innerHTML = '<p style="color:#9ca3af;font-size:12px;text-align:center;padding:12px;">သီတင်းပတ်များ မရှိသေးပါ</p>';
   } else {
     breakdown.innerHTML = weeksInMonth
       .sort((a, b) => a.weekStart.localeCompare(b.weekStart))
