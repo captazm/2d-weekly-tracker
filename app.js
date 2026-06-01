@@ -207,7 +207,7 @@ window.switchView = function(view) {
   document.getElementById('navCalendar').classList.toggle('active', view === 'calendar');
   document.getElementById('navMonthly').classList.toggle('active', view === 'monthly');
 
-  const titles = { week: '📊 Weekly P/L', calendar: '📅 Calendar', monthly: '📈 Monthly' };
+  const titles = { week: 'Weekly P/L', calendar: 'Calendar', monthly: 'Monthly' };
   document.getElementById('pageTitle').textContent = titles[view];
 
   if (view === 'calendar') renderCalendar();

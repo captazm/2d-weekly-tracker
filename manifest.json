@@ -1,22 +1,24 @@
 {
-  "name": "2D Weekly Tracker",
-  "short_name": "2D Tracker",
-  "description": "Weekly profit/loss tracker for 2D lottery",
+  "name": "Luck Max — 2D Lottery Tracker",
+  "short_name": "Luck Max",
+  "description": "2D Lottery weekly profit/loss tracker",
   "start_url": "./index.html",
   "display": "standalone",
-  "background_color": "#16a34a",
-  "theme_color": "#16a34a",
+  "background_color": "#1a1a2e",
+  "theme_color": "#1a1a2e",
   "orientation": "portrait",
   "icons": [
     {
-      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'%3E%3Crect width='192' height='192' fill='%2316a34a'/%3E%3Ctext x='96' y='125' font-size='90' text-anchor='middle' fill='white' font-family='sans-serif' font-weight='bold'%3E2D%3C/text%3E%3C/svg%3E",
+      "src": "icon-192.png",
       "sizes": "192x192",
-      "type": "image/svg+xml"
+      "type": "image/png",
+      "purpose": "any maskable"
     },
     {
-      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' fill='%2316a34a'/%3E%3Ctext x='256' y='335' font-size='240' text-anchor='middle' fill='white' font-family='sans-serif' font-weight='bold'%3E2D%3C/text%3E%3C/svg%3E",
+      "src": "icon-512.png",
       "sizes": "512x512",
-      "type": "image/svg+xml"
+      "type": "image/png",
+      "purpose": "any maskable"
     }
   ]
 }
