@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="my">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>2D Weekly P/L Tracker</title>
+<meta name="theme-color" content="#16a34a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%2316a34a'/%3E%3Ctext x='50' y='65' font-size='50' text-anchor='middle' fill='white' font-family='sans-serif' font-weight='bold'%3E2D%3C/text%3E%3C/svg%3E">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%2316a34a'/%3E%3Ctext x='50' y='65' font-size='50' text-anchor='middle' fill='white' font-family='sans-serif' font-weight='bold'%3E2D%3C/text%3E%3C/svg%3E">
+</head>
+<body>
+
+<!-- Login -->
+<div id="loginScreen" class="login-screen">
+  <div class="login-card">
+    <div class="logo">📊</div>
+    <h1>2D Weekly Tracker</h1>
+    <p class="subtitle">တစ်ပတ်စာ အရှုံးအမြတ် မှတ်တမ်း</p>
+    <div id="loginStatus" class="status">Firebase ချိတ်နေသည်...</div>
+
+    <div id="authForm" style="display:none;">
+      <div class="tabs">
+        <button onclick="switchAuthTab('login')" id="loginTab" class="tab active">ဝင်မည်</button>
+        <button onclick="switchAuthTab('signup')" id="signupTab" class="tab">အကောင့်အသစ်ဖန်တီး</button>
+      </div>
+
+      <div class="input-group">
+        <label>Email</label>
+        <input type="email" id="emailInput" placeholder="you@example.com"
+               autocomplete="email" autocapitalize="off">
+      </div>
+
+      <div class="input-group">
+        <label>Password <span id="pwHint" class="hint" style="display:none;">(6+ characters)</span></label>
+        <input type="password" id="passwordInput" placeholder="••••••••"
+               autocomplete="current-password" minlength="6">
+      </div>
+
+      <div class="input-group" id="confirmGroup" style="display:none;">
+        <label>Confirm Password</label>
+        <input type="password" id="confirmInput" placeholder="••••••••"
+               autocomplete="new-password" minlength="6">
+      </div>
+
+      <div id="authError" class="auth-error" style="display:none;"></div>
+
+      <button id="submitBtn" onclick="submitAuth()">📧 ဝင်မည်</button>
+
+      <button id="forgotBtn" onclick="forgotPassword()" class="link-btn">Password မေ့လား?</button>
+    </div>
+  </div>
+</div>
+
+<div id="app" class="container" style="display:none;">
+
+  <!-- Header -->
+  <header class="app-header">
+    <div class="header-content">
+      <div>
+        <h1 id="pageTitle">📊 Weekly P/L</h1>
+        <div class="user-info" id="userInfo"></div>
+      </div>
+      <button onclick="signOut()" class="icon-btn">🚪</button>
+    </div>
+  </header>
+
+  <!-- ===== WEEK VIEW ===== -->
+  <div id="weekView" class="view">
+    <!-- Week selector -->
+    <div class="week-selector-bar">
+      <button onclick="changeWeek(-1)" class="nav-btn">‹</button>
+      <div class="week-info">
+        <input type="date" id="weekStart" onchange="loadWeek()">
+        <div class="week-label" id="weekLabel"></div>
+      </div>
+      <button onclick="changeWeek(1)" class="nav-btn">›</button>
+    </div>
+
+    <!-- Controls -->
+    <div class="controls-bar">
+      <label>Comm %
+        <input type="number" id="commRate" value="18" step="0.1" oninput="recalc()" inputmode="decimal">
+      </label>
+      <label>Payout ×
+        <input type="number" id="payoutMult" value="80" oninput="recalc()" inputmode="numeric">
+      </label>
+      <div class="save-indicator" id="saveStatus">●</div>
+    </div>
+
+    <!-- The Table -->
+    <div class="table-wrap">
+      <table id="mainTable">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th class="th-bet">စုစုပေါင်း ထိုးငွေ</th>
+            <th class="th-win">ပေါက် ထိုးငွေ</th>
+            <th>P/L</th>
+            <th class="th-daily">တစ်ရက်စာ</th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+        <tfoot>
+          <tr class="sum-row">
+            <td>Σ</td>
+            <td id="sumBet">0</td>
+            <td id="sumWin">0</td>
+            <td id="sumPL" colspan="2">0</td>
+          </tr>
+          <tr class="grand-row">
+            <td colspan="3">တစ်ပတ်စာ စုစုပေါင်း</td>
+            <td colspan="2" id="grandTotal">0</td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+
+    <!-- Note for the week -->
+    <div class="card note-card">
+      <label>
+        📝 မှတ်စု (Note)
+        <input type="text" id="weekNote" placeholder="ဥပမာ: သင်္ကြန်ပိတ်ရက်"
+               oninput="onNoteChange()" maxlength="100">
+      </label>
+    </div>
+
+    <!-- Quick Stats -->
+    <div class="quick-stats">
+      <div class="stat-pill">
+        <span class="lbl">ရောင်းရ</span>
+        <span class="val" id="qsBet">0</span>
+      </div>
+      <div class="stat-pill orange">
+        <span class="lbl">ကော် ၁၈%</span>
+        <span class="val" id="qsComm">0</span>
+      </div>
+      <div class="stat-pill red">
+        <span class="lbl">လျော် ×၈၀</span>
+        <span class="val" id="qsPayout">0</span>
+      </div>
+    </div>
+
+    <!-- Actions -->
+    <div class="actions">
+      <button onclick="exportCSV()" class="btn-secondary">📤 Export</button>
+      <button onclick="clearWeek()" class="btn-danger">🗑️ Clear</button>
+    </div>
+  </div>
+
+  <!-- ===== CALENDAR VIEW ===== -->
+  <div id="calendarView" class="view" style="display:none;">
+    <div class="month-selector-bar">
+      <button onclick="changeMonth(-1)" class="nav-btn">‹</button>
+      <div class="month-info">
+        <span class="month-title" id="calMonthLabel">June 2026</span>
+        <span class="month-sub" id="calMonthPL"></span>
+      </div>
+      <button onclick="changeMonth(1)" class="nav-btn">›</button>
+    </div>
+
+    <div class="calendar-wrap">
+      <div class="cal-weekdays">
+        <div>Mo</div><div>Tu</div><div>We</div><div>Th</div><div>Fr</div><div>Sa</div><div>Su</div>
+      </div>
+      <div class="cal-grid" id="calGrid"></div>
+    </div>
+
+    <div class="legend">
+      <span><span class="dot profit"></span> အမြတ်</span>
+      <span><span class="dot loss"></span> အရှုံး</span>
+      <span><span class="dot empty"></span> data မရှိ</span>
+    </div>
+
+    <div class="card">
+      <h3>📈 လ Highlights</h3>
+      <div id="monthHighlights"></div>
+    </div>
+  </div>
+
+  <!-- ===== MONTHLY VIEW ===== -->
+  <div id="monthlyView" class="view" style="display:none;">
+    <div class="month-selector-bar">
+      <button onclick="changeMonth(-1)" class="nav-btn">‹</button>
+      <div class="month-info">
+        <span class="month-title" id="monMonthLabel">June 2026</span>
+        <span class="month-sub" id="monMonthSub"></span>
+      </div>
+      <button onclick="changeMonth(1)" class="nav-btn">›</button>
+    </div>
+
+    <!-- Monthly Summary Box -->
+    <div class="monthly-summary" id="monthlySummaryBox"></div>
+
+    <!-- Week Breakdown -->
+    <div class="card">
+      <h3>📋 ပတ်စဉ် Breakdown</h3>
+      <div id="weekBreakdown"></div>
+    </div>
+
+    <!-- Compare with previous month -->
+    <div class="card">
+      <h3>⚖️ ပြီးခဲ့တဲ့လနဲ့ နှိုင်းယှဉ်</h3>
+      <div id="monthCompare"></div>
+    </div>
+
+    <!-- Yearly mini-chart -->
+    <div class="card">
+      <h3>📊 ဒီနှစ်လုံး Trend</h3>
+      <div id="yearlyChart" class="yearly-chart"></div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <p id="storageMode">☁️ Cloud sync</p>
+  </div>
+</div>
+
+<!-- Custom numpad (mobile) -->
+<div id="numpad" class="numpad" style="display:none;">
+  <div class="numpad-header">
+    <div class="numpad-label" id="numpadLabel">ထိုးငွေ ထည့်ပါ</div>
+    <button class="numpad-close" onclick="closeNumpad()">✕</button>
+  </div>
+  <div class="numpad-display" id="numpadDisplay">0</div>
+  <div class="numpad-grid">
+    <button class="numpad-key" data-key="1">1</button>
+    <button class="numpad-key" data-key="2">2</button>
+    <button class="numpad-key" data-key="3">3</button>
+    <button class="numpad-key" data-key="000">000</button>
+
+    <button class="numpad-key" data-key="4">4</button>
+    <button class="numpad-key" data-key="5">5</button>
+    <button class="numpad-key" data-key="6">6</button>
+    <button class="numpad-key" data-key="00">00</button>
+
+    <button class="numpad-key" data-key="7">7</button>
+    <button class="numpad-key" data-key="8">8</button>
+    <button class="numpad-key" data-key="9">9</button>
+    <button class="numpad-key clear" data-key="C">C</button>
+
+    <button class="numpad-key" data-key="0">0</button>
+    <button class="numpad-key" data-key="000">000</button>
+    <button class="numpad-key back" data-key="back">⌫</button>
+    <button class="numpad-key done" data-key="done">✓ Next</button>
+  </div>
+</div>
+
+<!-- Bottom Navigation -->
+<nav id="bottomNav" class="bottom-nav" style="display:none;">
+  <button onclick="switchView('week')" id="navWeek" class="nav-item active">
+    <span class="icon">📊</span>
+    <span class="label">Week</span>
+  </button>
+  <button onclick="switchView('calendar')" id="navCalendar" class="nav-item">
+    <span class="icon">📅</span>
+    <span class="label">Calendar</span>
+  </button>
+  <button onclick="switchView('monthly')" id="navMonthly" class="nav-item">
+    <span class="icon">📈</span>
+    <span class="label">Monthly</span>
+  </button>
+</nav>
+
+<link rel="stylesheet" href="styles.css?v=11">
+<script type="module" src="firebase-config.js?v=11"></script>
+<script type="module" src="app.js?v=11"></script>
+</body>
+</html>
