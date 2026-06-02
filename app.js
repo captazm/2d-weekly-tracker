@@ -6,7 +6,8 @@ import {
   browserLocalPersistence
 } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-auth.js";
 import {
-  getFirestore, doc, setDoc, getDoc, collection, getDocs, query, orderBy, deleteDoc
+  getFirestore, doc, setDoc, getDoc, collection, getDocs, query, orderBy, deleteDoc,
+  initializeFirestore, persistentLocalCache, persistentMultipleTabManager
 } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js";
 import { firebaseConfig, FIREBASE_ENABLED } from "./firebase-config.js";
 
@@ -64,7 +65,15 @@ async function initFirebase() {
   try {
     app = initializeApp(firebaseConfig);
     auth = getAuth(app);
-    db = getFirestore(app);
+    // Initialize Firestore with offline persistence (IndexedDB cache)
+    try {
+      db = initializeFirestore(app, {
+        localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
+      });
+    } catch (e) {
+      console.warn('Persistent cache init failed, falling back to default:', e);
+      db = getFirestore(app);
+    }
     // Persist login across browser restarts
     try { await setPersistence(auth, browserLocalPersistence); } catch (e) { /* ignore */ }
     onAuthStateChanged(auth, (user) => {

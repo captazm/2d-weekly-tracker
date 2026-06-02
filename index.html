@@ -275,7 +275,100 @@
 
 <link rel="manifest" href="manifest.json">
 <link rel="stylesheet" href="styles.css?v=14">
+
+<!-- PWA: Install banner & Update banner & Offline indicator -->
+<div id="pwaInstallBanner" class="pwa-banner install-banner" style="display:none;">
+  <span>📲 Home Screen မှာ install လုပ်မလား?</span>
+  <button onclick="doInstall()" class="banner-btn">Install</button>
+  <button onclick="dismissInstall()" class="banner-close">×</button>
+</div>
+
+<div id="pwaUpdateBanner" class="pwa-banner update-banner" style="display:none;">
+  <span>🆕 Version အသစ်ရှိပါတယ်</span>
+  <button onclick="doUpdate()" class="banner-btn">Reload</button>
+</div>
+
+<div id="pwaOfflineBanner" class="pwa-banner offline-banner" style="display:none;">
+  <span>📴 Offline — Cached data ပြနေ</span>
+</div>
+
 <script type="module" src="firebase-config.js?v=14"></script>
 <script type="module" src="app.js?v=14"></script>
+
+<script>
+  // ========== PWA Service Worker ==========
+  let waitingWorker = null;
+
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('./sw.js').then((reg) => {
+        // Check for updates every 60 seconds
+        setInterval(() => reg.update(), 60000);
+
+        reg.addEventListener('updatefound', () => {
+          const newWorker = reg.installing;
+          newWorker?.addEventListener('statechange', () => {
+            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+              waitingWorker = newWorker;
+              document.getElementById('pwaUpdateBanner').style.display = 'flex';
+            }
+          });
+        });
+      }).catch((err) => console.warn('SW registration failed', err));
+    });
+
+    let refreshing = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (refreshing) return;
+      refreshing = true;
+      window.location.reload();
+    });
+  }
+
+  window.doUpdate = function() {
+    if (waitingWorker) waitingWorker.postMessage('SKIP_WAITING');
+    document.getElementById('pwaUpdateBanner').style.display = 'none';
+  };
+
+  // ========== PWA Install Prompt ==========
+  let deferredPrompt = null;
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredPrompt = e;
+    // Only show if not already installed and not dismissed
+    if (!window.matchMedia('(display-mode: standalone)').matches &&
+        !localStorage.getItem('pwaInstallDismissed')) {
+      document.getElementById('pwaInstallBanner').style.display = 'flex';
+    }
+  });
+
+  window.doInstall = async function() {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    if (outcome === 'accepted') {
+      document.getElementById('pwaInstallBanner').style.display = 'none';
+    }
+    deferredPrompt = null;
+  };
+
+  window.dismissInstall = function() {
+    document.getElementById('pwaInstallBanner').style.display = 'none';
+    localStorage.setItem('pwaInstallDismissed', Date.now());
+  };
+
+  window.addEventListener('appinstalled', () => {
+    document.getElementById('pwaInstallBanner').style.display = 'none';
+    deferredPrompt = null;
+  });
+
+  // ========== Network status ==========
+  function updateNetwork() {
+    document.getElementById('pwaOfflineBanner').style.display = navigator.onLine ? 'none' : 'flex';
+  }
+  window.addEventListener('online', updateNetwork);
+  window.addEventListener('offline', updateNetwork);
+  updateNetwork();
+</script>
 </body>
 </html>

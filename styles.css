@@ -1143,6 +1143,62 @@ tfoot .grand-row td:last-child {
   letter-spacing: 0.02em;
 }
 
+/* ===== PWA Banners ===== */
+.pwa-banner {
+  position: fixed;
+  top: env(safe-area-inset-top, 0);
+  left: 0; right: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  font-size: 13px;
+  font-weight: 700;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+  animation: slideDown 0.3s ease-out;
+}
+@keyframes slideDown {
+  from { transform: translateY(-100%); }
+  to { transform: translateY(0); }
+}
+.install-banner {
+  background: linear-gradient(135deg, #fbbf24, #f59e0b);
+  color: #422006;
+}
+.update-banner {
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
+  color: white;
+}
+.offline-banner {
+  background: linear-gradient(135deg, #6b7280, #4b5563);
+  color: white;
+  justify-content: center;
+}
+.pwa-banner span { flex: 1; }
+.banner-btn {
+  background: rgba(0,0,0,0.2);
+  color: inherit;
+  border: 1px solid rgba(255,255,255,0.3);
+  border-radius: 8px;
+  padding: 7px 14px;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+  font-family: inherit;
+}
+.banner-btn:active { background: rgba(0,0,0,0.35); transform: scale(0.96); }
+.banner-close {
+  background: transparent;
+  color: inherit;
+  border: none;
+  font-size: 22px;
+  cursor: pointer;
+  padding: 0 4px;
+  line-height: 1;
+  font-family: inherit;
+}
+
 /* Phones (480px and below) */
 @media (max-width: 480px) {
   .table-wrap { padding: 8px; }
