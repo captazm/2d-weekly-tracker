@@ -1,5 +1,5 @@
 // Luck Max Service Worker — PWA v1
-const VERSION = 'v14';
+const VERSION = 'v15';
 const CACHE_NAME = `luckmax-${VERSION}`;
 
 // Files cached at install time (app shell)
@@ -8,6 +8,7 @@ const APP_SHELL = [
   './index.html',
   './styles.css',
   './app.js',
+  './draw.js',
   './firebase-config.js',
   './manifest.json',
   './logo.png',

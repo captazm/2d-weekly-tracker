@@ -222,6 +222,11 @@
     </div>
   </div>
 
+  <!-- ===== 2D DRAW VIEWS (rendered by draw.js) ===== -->
+  <div id="drawsView" class="view" style="display:none;"></div>
+  <div id="drawDetailView" class="view" style="display:none;"></div>
+  <div id="lotsetView" class="view" style="display:none;"></div>
+
   <div class="footer">
     <p id="storageMode">☁️ Cloud sync</p>
   </div>
@@ -259,6 +264,10 @@
 
 <!-- Bottom Navigation -->
 <nav id="bottomNav" class="bottom-nav" style="display:none;">
+  <button onclick="switchView('draws')" id="navDraws" class="nav-item">
+    <span class="icon">🎯</span>
+    <span class="label">2D</span>
+  </button>
   <button onclick="switchView('week')" id="navWeek" class="nav-item active">
     <span class="icon">📊</span>
     <span class="label">Week</span>
@@ -271,10 +280,14 @@
     <span class="icon">📈</span>
     <span class="label">Monthly</span>
   </button>
+  <button onclick="switchView('lotset')" id="navLotset" class="nav-item">
+    <span class="icon">⚙️</span>
+    <span class="label">Setting</span>
+  </button>
 </nav>
 
 <link rel="manifest" href="manifest.json">
-<link rel="stylesheet" href="styles.css?v=14">
+<link rel="stylesheet" href="styles.css?v=15">
 
 <!-- PWA: Install banner & Update banner & Offline indicator -->
 <div id="pwaInstallBanner" class="pwa-banner install-banner" style="display:none;">
@@ -292,8 +305,8 @@
   <span>📴 Offline — Cached data ပြနေ</span>
 </div>
 
-<script type="module" src="firebase-config.js?v=14"></script>
-<script type="module" src="app.js?v=14"></script>
+<script type="module" src="firebase-config.js?v=15"></script>
+<script type="module" src="app.js?v=15"></script>
 
 <script>
   // ========== PWA Service Worker ==========

@@ -10,6 +10,7 @@ import {
   initializeFirestore, persistentLocalCache, persistentMultipleTabManager
 } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js";
 import { firebaseConfig, FIREBASE_ENABLED } from "./firebase-config.js";
+import { initLottery, renderDrawList, renderLotSettings } from "./draw.js";
 
 const SESSIONS = [
   { day: 1, dayName: 'တနင်္လာ', session: 'morning', label: 'မနက်' },
@@ -197,6 +198,10 @@ function showApp() {
   buildTable();
   loadWeek();
   setupNumpad();
+
+  // Init 2D dealer module (Firestore-backed; disabled in local mode)
+  const isLocal = currentUser.uid.startsWith('local');
+  initLottery(isLocal ? null : db, isLocal ? null : currentUser.uid);
 }
 
 window.signOut = async () => {
@@ -207,21 +212,36 @@ window.signOut = async () => {
 };
 
 // ===== View switching =====
+const VIEW_IDS = ['weekView', 'calendarView', 'monthlyView', 'drawsView', 'drawDetailView', 'lotsetView'];
 window.switchView = function(view) {
-  document.getElementById('weekView').style.display = view === 'week' ? 'block' : 'none';
-  document.getElementById('calendarView').style.display = view === 'calendar' ? 'block' : 'none';
-  document.getElementById('monthlyView').style.display = view === 'monthly' ? 'block' : 'none';
+  const showId = {
+    week: 'weekView', calendar: 'calendarView', monthly: 'monthlyView',
+    draws: 'drawsView', drawDetail: 'drawDetailView', lotset: 'lotsetView',
+  }[view];
+  VIEW_IDS.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = id === showId ? 'block' : 'none';
+  });
 
   document.getElementById('navWeek').classList.toggle('active', view === 'week');
   document.getElementById('navCalendar').classList.toggle('active', view === 'calendar');
   document.getElementById('navMonthly').classList.toggle('active', view === 'monthly');
+  document.getElementById('navDraws')?.classList.toggle('active', view === 'draws' || view === 'drawDetail');
+  document.getElementById('navLotset')?.classList.toggle('active', view === 'lotset');
 
-  const titles = { week: 'Weekly P/L', calendar: 'Calendar', monthly: 'Monthly' };
-  document.getElementById('pageTitle').textContent = titles[view];
+  const titles = {
+    week: 'Weekly P/L', calendar: 'Calendar', monthly: 'Monthly',
+    draws: '2D Draws', drawDetail: '2D Draw', lotset: 'Settings',
+  };
+  document.getElementById('pageTitle').textContent = titles[view] || 'Luck Max';
 
   if (view === 'calendar') renderCalendar();
   if (view === 'monthly') renderMonthly();
+  if (view === 'draws') renderDrawList();
+  if (view === 'lotset') renderLotSettings();
 };
+
+window.invalidateWeeksCache = () => { allWeeksCache = null; };
 
 // ===== Week View =====
 function buildTable() {
