@@ -72,7 +72,10 @@
           <div class="user-info" id="userInfo"></div>
         </div>
       </div>
-      <button onclick="signOut()" class="icon-btn">🚪</button>
+      <div style="display:flex;gap:8px;">
+        <button onclick="document.getElementById('manualSheet').style.display='block'" class="icon-btn">❓</button>
+        <button onclick="signOut()" class="icon-btn">🚪</button>
+      </div>
     </div>
   </header>
 
@@ -256,6 +259,104 @@
   </div>
 </div>
 
+<!-- Manual (Burmese user guide) -->
+<div id="manualSheet" class="manual-sheet" style="display:none;">
+  <div class="manual-head">
+    <img src="logo.png" alt="" style="width:32px;height:32px;border-radius:8px;">
+    <b>Luck Max — အသုံးပြုနည်း</b>
+    <button onclick="document.getElementById('manualSheet').style.display='none'" class="numpad-close">✕</button>
+  </div>
+  <div class="manual-body">
+
+    <div class="m-card">
+      <h4>🧭 App ဖွဲ့စည်းပုံ</h4>
+      <table class="m-table">
+        <tr><td>🎯 <b>2D</b></td><td>နေ့စဉ် ဒိုင်လုပ်ငန်း — Draw ဖွင့်၊ ထိုးငွေထည့်၊ ကာ၊ ပေါက်ရှင်း၊ စာရင်းရှင်း</td></tr>
+        <tr><td>📊 <b>Week</b></td><td>တစ်ပတ်စာ အရှုံးအမြတ် စာရင်းချုပ် (၅ ရက် × ၂ ပွဲ)</td></tr>
+        <tr><td>📅 <b>Calendar</b></td><td>လ-အလိုက် ရက်တိုင်း P/L အရောင်ပြ</td></tr>
+        <tr><td>📈 <b>Monthly</b></td><td>လချုပ် + ယခင်လနှိုင်းယှဉ် + တစ်နှစ်စာ Trend</td></tr>
+        <tr><td>⚙️ <b>Setting</b></td><td>ထိုးသား၊ ကော်၊ Limit၊ ပိတ်ဂဏန်း</td></tr>
+      </table>
+    </div>
+
+    <div class="m-card">
+      <h4>🎯 2D — Draw ဖွင့်ခြင်း</h4>
+      <ol>
+        <li>ရက်စွဲရွေး → <b>မနက် / ည</b> ရွေး → <b>+ ဖွင့်</b> နှိပ်</li>
+        <li>Draw ကို နှိပ်ပြီး ဝင်ပါ — tab ၅ ခု တွေ့မယ်: <b>ထည့် / စာရင်း / ဂဏန်း / ကာ / ပေါက်</b></li>
+      </ol>
+      <p class="m-note">⚠️ မထည့်ခင် Setting မှာ ထိုးသား အရင်ထည့်ထားပါ</p>
+    </div>
+
+    <div class="m-card">
+      <h4>✍️ ထိုးငွေ ထည့်နည်း (Format များ)</h4>
+      <p>ထိုးသားရွေး → စာရိုက် (သို့) Viber message ကို 📋 နဲ့ paste → <b>ထည့်မည်</b></p>
+      <table class="m-table mono">
+        <tr><th>ရိုက်ပုံ</th><th>အဓိပ္ပါယ်</th></tr>
+        <tr><td>12.34.56d 5000</td><td>12, 34, 56 ကို 5000 စီ ထိုး</td></tr>
+        <tr><td>78r 1000</td><td>78 + 87 (ပတ်) 1000 စီ</td></tr>
+        <tr><td>12 2000 / 11=3000</td><td>တစ်ကွက်ချင်း</td></tr>
+        <tr><td>10/30/90/r500</td><td>Slash ပုံစံ + r ပတ်</td></tr>
+        <tr><td>1267ခွေ100</td><td>1,2,6,7 ခွေ (12 ကွက်)</td></tr>
+        <tr><td>2479ခွေပူး100</td><td>ခွေ + အပူးပါ (16 ကွက်)</td></tr>
+        <tr><td>အပူး100</td><td>00,11...99 (10 ကွက်)</td></tr>
+        <tr><td>4ဘရိတ်200</td><td>4 ပါသမျှ (19 ကွက်)</td></tr>
+        <tr><td>3ထိပ်500 / 5ပိတ်300</td><td>ထိပ် / ပိတ် (10 ကွက်စီ)</td></tr>
+        <tr><td>12.34ပတ်500</td><td>အပြန်အလှန်ပါ</td></tr>
+        <tr><td>ပါဝါ200 / နက္ခတ်100</td><td>ပါဝါ / နက္ခတ် အစုံ</td></tr>
+      </table>
+      <p class="m-note">💡 Limit ကျော်ရင် ကျော်တဲ့ပမာဏ <b>ကာ tab</b> ထဲ အလိုအလျောက် ဝင်မယ်။ ပိတ်ဂဏန်းဆို လုံးဝ လက်မခံဘူး။</p>
+    </div>
+
+    <div class="m-card">
+      <h4>🔄 ကာ (တခြားဒိုင်ကို ပြန်တင်)</h4>
+      <ol>
+        <li><b>ကာ tab</b> → 📋 <b>Copy All</b> → Viber/Telegram မှာ paste ပို့</li>
+        <li>ပို့ပြီးရင် <b>✓ အားလုံးပို့ပြီး</b> နှိပ် — Net ထဲက အလိုအလျောက် နှုတ်မယ်</li>
+      </ol>
+    </div>
+
+    <div class="m-card">
+      <h4>🏆 ပေါက်ဂဏန်း ရှင်းခြင်း</h4>
+      <ol>
+        <li><b>ပေါက် tab</b> → ပေါက်ဂဏန်း ၂ လုံးရိုက် → <b>ရှင်းမည်</b></li>
+        <li>ရောင်းရ − ကော် − လျော် = <b>အမြတ်ငွေ</b> auto တွက်ပြ</li>
+        <li>နိုင်သူများ + ကာပြန်ရငွေ ပြမယ်</li>
+        <li>✓ <b>Week tab ထဲ auto ဝင်သွားမယ်</b> — ထပ်ရိုက်စရာမလို</li>
+      </ol>
+      <p class="m-note">💰 <b>စာရင်းရှင်း</b> tab (2D ထဲ) မှာ ထိုးသားတစ်ဦးချင်း ရှင်းရမယ့်စာရင်း ကြည့်/Copy လုပ်လို့ရတယ်</p>
+    </div>
+
+    <div class="m-card">
+      <h4>📊 Week — တစ်ပတ်စာ စာရင်းချုပ်</h4>
+      <table class="m-table">
+        <tr><th>Column</th><th>အဓိပ္ပါယ်</th></tr>
+        <tr><td><b>ထိုးငွေ</b></td><td>ပွဲတစ်ခုစာ စုစုပေါင်း ရောင်းရငွေ (cell နှိပ် → numpad)</td></tr>
+        <tr><td><b>ပေါက်</b></td><td>ပေါက်ဂဏန်းပေါ် ထိုးထားတဲ့ ပမာဏ</td></tr>
+        <tr><td><b>P/L</b></td><td>ရောင်းဖက် — ထိုးငွေ − ကော်18% − ပေါက်×80</td></tr>
+        <tr><td><b>ကာ P/L</b></td><td>ခရမ်းရောင် cell နှိပ် → ကာဒိုင်ရွေး (ကော်% ကိုယ်စီ) + ကာတင်/ကာပေါက် ရိုက်</td></tr>
+        <tr><td><b>တစ်ရက်စာ</b></td><td>မနက်+ည (ရောင်း+ကာ) ပေါင်း</td></tr>
+      </table>
+      <p><b>ကာ P/L တွက်နည်း:</b> ကာပေါက်×80 − ကာတင်×(1−ဒိုင်ကော်%)</p>
+      <p class="m-note">🖨️ <b>စက်ရိုက်ခ</b> — တစ်ပတ်တစ်ခါ ရိုက်ထည့်၊ အသားတင်ထဲက နှုတ်မယ်<br>
+      🤝 <b>Partner ခွဲဝေမှု</b> — % သတ်မှတ်ရင် တစ်ယောက်ချင်းဝေစု auto တွက်ပြ</p>
+    </div>
+
+    <div class="m-card">
+      <h4>💡 သိထားသင့်တာများ</h4>
+      <ul>
+        <li>💾 <b>Auto-save</b> — ရိုက်တာနဲ့ Cloud ထဲ သိမ်းပြီး (ညာဘက်အပေါ် ● အစိမ်း = သိမ်းပြီး)</li>
+        <li>📴 <b>Offline ရ</b> — Internet ပြတ်လည်း သုံးလို့ရ၊ ပြန်ချိတ်ရင် auto sync</li>
+        <li>📱 <b>Install</b> — Safari: Share → Add to Home Screen / Chrome: Install app</li>
+        <li>🔐 ဖုန်း/ကွန်ပျူတာ ဘယ်နှစ်လုံးမဆို same email login → data တူတူမြင်ရ</li>
+        <li>🆕 Version အသစ်ရှိရင် အပြာရောင် banner ပေါ်မယ် — Reload နှိပ်ပါ</li>
+      </ul>
+    </div>
+
+    <p style="text-align:center;color:#9ca3af;font-size:11px;padding:10px 0 20px;">Luck Max 🦉 v2</p>
+  </div>
+</div>
+
 <!-- Ka entry sheet (per-session forwards to other dealers) -->
 <div id="kaSheet" class="ka-overlay" style="display:none;" onclick="if(event.target===this)closeKaSheet()">
   <div class="ka-card">
@@ -328,7 +429,7 @@
 </nav>
 
 <link rel="manifest" href="manifest.json">
-<link rel="stylesheet" href="styles.css?v=17">
+<link rel="stylesheet" href="styles.css?v=18">
 
 <!-- PWA: Install banner & Update banner & Offline indicator -->
 <div id="pwaInstallBanner" class="pwa-banner install-banner" style="display:none;">
@@ -346,8 +447,8 @@
   <span>📴 Offline — Cached data ပြနေ</span>
 </div>
 
-<script type="module" src="firebase-config.js?v=17"></script>
-<script type="module" src="app.js?v=17"></script>
+<script type="module" src="firebase-config.js?v=18"></script>
+<script type="module" src="app.js?v=18"></script>
 
 <script>
   // ========== PWA Service Worker ==========
