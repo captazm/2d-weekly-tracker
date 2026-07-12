@@ -105,9 +105,10 @@
         <thead>
           <tr>
             <th>#</th>
-            <th class="th-bet">စုစုပေါင်း ထိုးငွေ</th>
-            <th class="th-win">ပေါက် ထိုးငွေ</th>
+            <th class="th-bet">ထိုးငွေ</th>
+            <th class="th-win">ပေါက်</th>
             <th>P/L</th>
+            <th class="th-ka">ကာ P/L</th>
             <th class="th-daily">တစ်ရက်စာ</th>
           </tr>
         </thead>
@@ -117,14 +118,37 @@
             <td>Σ</td>
             <td id="sumBet">0</td>
             <td id="sumWin">0</td>
-            <td id="sumPL" colspan="2">0</td>
+            <td id="sumPL">0</td>
+            <td id="sumKa">0</td>
+            <td id="sumDay">0</td>
           </tr>
           <tr class="grand-row">
-            <td colspan="3">တစ်ပတ်စာ စုစုပေါင်း</td>
+            <td colspan="4">တစ်ပတ်စာ (ရိုက်ခနှုတ်ပြီး)</td>
             <td colspan="2" id="grandTotal">0</td>
           </tr>
         </tfoot>
       </table>
+    </div>
+
+    <!-- Weekly summary: sell + ka + fee -->
+    <div class="card" id="weekSummaryCard">
+      <h3>🧾 တစ်ပတ်စာ အနှစ်ချုပ်</h3>
+      <div class="sum-line"><span>ရောင်း P/L</span><b id="wsSell">0</b></div>
+      <div class="sum-line"><span>ကာ P/L</span><b id="wsKa">0</b></div>
+      <div class="sum-line fee-line">
+        <span>🖨️ စက်ရိုက်ခ (တစ်ပတ်)</span>
+        <input id="machineFeeInput" inputmode="numeric" placeholder="0" oninput="onFeeInput(this)">
+      </div>
+      <div class="sum-line net-line"><span>အသားတင် P/L</span><b id="wsNet">0</b></div>
+    </div>
+
+    <!-- Partner split -->
+    <div class="card" id="partnerCard">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+        <h3 style="margin:0;">🤝 Partner ခွဲဝေမှု</h3>
+        <button onclick="addPartner()" class="mini-add-btn">+ ထည့်</button>
+      </div>
+      <div id="partnerList"></div>
     </div>
 
     <!-- Note for the week -->
@@ -232,6 +256,23 @@
   </div>
 </div>
 
+<!-- Ka entry sheet (per-session forwards to other dealers) -->
+<div id="kaSheet" class="ka-overlay" style="display:none;" onclick="if(event.target===this)closeKaSheet()">
+  <div class="ka-card">
+    <div class="ka-head">
+      <b id="kaSheetTitle">ကာစာရင်း</b>
+      <button onclick="closeKaSheet()" class="numpad-close">✕</button>
+    </div>
+    <div id="kaEntries"></div>
+    <button onclick="kaAddEntry()" class="ka-add-btn">＋ ကာဒိုင် ထပ်ထည့်</button>
+    <div class="ka-total-line">
+      <span>ကာ P/L</span>
+      <b id="kaSheetTotal">0</b>
+    </div>
+    <button onclick="closeKaSheet()" class="ka-done-btn">✓ ပြီးပြီ</button>
+  </div>
+</div>
+
 <!-- Custom numpad (mobile) -->
 <div id="numpad" class="numpad" style="display:none;">
   <div class="numpad-header">
@@ -287,7 +328,7 @@
 </nav>
 
 <link rel="manifest" href="manifest.json">
-<link rel="stylesheet" href="styles.css?v=16">
+<link rel="stylesheet" href="styles.css?v=17">
 
 <!-- PWA: Install banner & Update banner & Offline indicator -->
 <div id="pwaInstallBanner" class="pwa-banner install-banner" style="display:none;">
@@ -305,8 +346,8 @@
   <span>📴 Offline — Cached data ပြနေ</span>
 </div>
 
-<script type="module" src="firebase-config.js?v=16"></script>
-<script type="module" src="app.js?v=16"></script>
+<script type="module" src="firebase-config.js?v=17"></script>
+<script type="module" src="app.js?v=17"></script>
 
 <script>
   // ========== PWA Service Worker ==========

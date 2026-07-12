@@ -410,11 +410,29 @@ table {
   font-family: inherit;
 }
 /* Column widths (in %) — sum = 100% */
-table th:nth-child(1), table td:nth-child(1) { width: 9%; }   /* # */
-table th:nth-child(2), table td:nth-child(2) { width: 24%; }  /* Total bet (7 digit) */
-table th:nth-child(3), table td:nth-child(3) { width: 20%; }  /* Win bet (6 digit) */
-table th:nth-child(4), table td:nth-child(4) { width: 22%; }  /* P/L */
-table th:nth-child(5), table td:nth-child(5) { width: 25%; }  /* Daily */
+table th:nth-child(1), table td:nth-child(1) { width: 8%; }   /* # */
+table th:nth-child(2), table td:nth-child(2) { width: 21%; }  /* Total bet */
+table th:nth-child(3), table td:nth-child(3) { width: 15%; }  /* Win bet */
+table th:nth-child(4), table td:nth-child(4) { width: 20%; }  /* Sell P/L */
+table th:nth-child(5), table td:nth-child(5) { width: 18%; }  /* Ka P/L */
+table th:nth-child(6), table td:nth-child(6) { width: 18%; }  /* Daily */
+
+.th-ka {
+  background: linear-gradient(135deg, #ede9fe 0%, #ddd6fe 100%) !important;
+  color: #5b21b6;
+}
+td.ka-cell {
+  padding: 10px 5px;
+  font-weight: 700;
+  font-size: 12px;
+  letter-spacing: -0.03em;
+  cursor: pointer;
+  background: rgba(237, 233, 254, 0.35) !important;
+  white-space: nowrap;
+  transition: background 0.15s;
+}
+td.ka-cell:active { background: rgba(221, 214, 254, 0.6) !important; }
+td.ka-cell.empty { color: #c4b5fd; text-align: center; font-size: 15px; }
 thead th {
   background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
   color: #064e3b;
@@ -1141,6 +1159,170 @@ tfoot .grand-row td:last-child {
   font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.02em;
+}
+
+/* ===== Weekly summary + Partner ===== */
+.sum-line {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 9px 4px;
+  font-size: 13.5px;
+  border-bottom: 1px solid #f3f4f6;
+}
+.sum-line span { color: var(--text-muted); font-weight: 600; }
+.sum-line b { font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+.sum-line.fee-line input {
+  width: 120px;
+  border: 1.5px solid var(--border);
+  border-radius: 8px;
+  padding: 7px 10px;
+  text-align: right;
+  font-size: 14px;
+  font-weight: 700;
+  font-family: inherit;
+  font-variant-numeric: tabular-nums;
+  color: #d97706;
+}
+.sum-line.fee-line input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(251, 191, 36, 0.15);
+}
+.sum-line.net-line {
+  border-bottom: none;
+  border-top: 2px solid #e5e7eb;
+  margin-top: 4px;
+  padding-top: 12px;
+  font-size: 15px;
+}
+.sum-line.net-line b { font-size: 18px; font-weight: 900; }
+
+.mini-add-btn {
+  background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+  color: white; border: none;
+  border-radius: 999px;
+  padding: 6px 14px;
+  font-size: 12px; font-weight: 700;
+  font-family: inherit; cursor: pointer;
+}
+.partner-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 4px;
+  border-bottom: 1px solid #f3f4f6;
+  font-size: 13.5px;
+}
+.partner-row .p-name { flex: 1; font-weight: 700; }
+.partner-row .p-pct {
+  background: #eef2ff; color: #4338ca;
+  border-radius: 999px; padding: 3px 10px;
+  font-size: 12px; font-weight: 800;
+}
+.partner-row .p-share {
+  font-variant-numeric: tabular-nums;
+  font-weight: 800;
+  min-width: 90px; text-align: right;
+}
+.partner-row button {
+  background: none; border: none;
+  color: #d1d5db; font-size: 15px; cursor: pointer;
+}
+
+/* ===== Ka sheet (modal) ===== */
+.ka-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.5);
+  z-index: 55;
+  display: flex; align-items: flex-end; justify-content: center;
+}
+.ka-card {
+  background: white;
+  border-radius: 22px 22px 0 0;
+  width: 100%; max-width: 800px;
+  max-height: 85vh; overflow-y: auto;
+  padding: 16px;
+  animation: slideUp 0.28s cubic-bezier(0.34, 1.4, 0.64, 1);
+  box-shadow: 0 -10px 40px rgba(0,0,0,0.25);
+}
+.ka-head {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 12px;
+}
+.ka-head b { font-size: 15px; color: var(--primary-dark); }
+.ka-entry {
+  background: #faf5ff;
+  border: 1px solid #e9d5ff;
+  border-radius: 14px;
+  padding: 12px;
+  margin-bottom: 10px;
+}
+.ka-entry .ka-row1 {
+  display: flex; gap: 8px; align-items: center; margin-bottom: 8px;
+}
+.ka-entry select {
+  flex: 1;
+  border: 1.5px solid #ddd6fe;
+  border-radius: 10px;
+  padding: 9px 10px;
+  font-family: inherit; font-size: 13px; font-weight: 700;
+  background: white; color: #5b21b6;
+}
+.ka-entry .ka-del {
+  background: none; border: none; font-size: 16px; cursor: pointer;
+}
+.ka-entry .ka-inputs {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+}
+.ka-entry .ka-inputs label {
+  font-size: 10.5px; color: #7c3aed; font-weight: 700;
+}
+.ka-entry .ka-inputs input {
+  width: 100%;
+  border: 1.5px solid #ddd6fe;
+  border-radius: 10px;
+  padding: 10px;
+  text-align: right;
+  font-size: 15px; font-weight: 700;
+  font-family: inherit;
+  font-variant-numeric: tabular-nums;
+  margin-top: 3px;
+  background: white;
+}
+.ka-entry .ka-inputs input:focus {
+  outline: none; border-color: #8b5cf6;
+  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.15);
+}
+.ka-entry .ka-pl {
+  text-align: right;
+  font-size: 12px; font-weight: 800;
+  margin-top: 6px;
+  font-variant-numeric: tabular-nums;
+}
+.ka-add-btn {
+  width: 100%;
+  background: white;
+  border: 1.5px dashed #c4b5fd;
+  color: #7c3aed;
+  border-radius: 12px;
+  padding: 12px;
+  font-size: 13px; font-weight: 700;
+  font-family: inherit; cursor: pointer;
+  margin-bottom: 12px;
+}
+.ka-add-btn:active { background: #faf5ff; }
+.ka-total-line {
+  display: flex; justify-content: space-between;
+  padding: 12px 4px;
+  border-top: 2px solid #e5e7eb;
+  font-size: 15px; font-weight: 700;
+}
+.ka-total-line b { font-size: 18px; font-weight: 900; font-variant-numeric: tabular-nums; }
+.ka-done-btn {
+  width: 100%;
+  background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+  color: white; border: none;
+  border-radius: 12px;
+  padding: 14px;
+  font-size: 15px; font-weight: 800;
+  font-family: inherit; cursor: pointer;
 }
 
 /* ===== PWA Banners ===== */

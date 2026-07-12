@@ -35,6 +35,50 @@ let numpadValue = '';
 let allWeeksCache = null; // cached for calendar/monthly views
 let currentMonth = new Date(); // for calendar/monthly navigation
 
+// Ka (forward-to-dealer) state
+let weekKa = {};        // { rowIdx: [{dealerId, name, comm, amount, win}] }
+let machineFee = '';    // weekly machine fee
+let kaDealers = [];     // [{id, name, comm}] — registry
+let partners = [];      // [{name, pct}]
+let kaSheetRow = null;
+
+const genId2 = () => Math.random().toString(36).slice(2, 9) + Date.now().toString(36);
+
+function kaEntryPL(e, payoutMult) {
+  const amt = Number(e.amount) || 0, win = Number(e.win) || 0, comm = Number(e.comm) || 0;
+  if (!amt && !win) return 0;
+  return win * payoutMult - Math.round(amt * (1 - comm / 100));
+}
+function kaRowPL(i, payoutMult) {
+  return (weekKa[i] || []).reduce((s, e) => s + kaEntryPL(e, payoutMult), 0);
+}
+
+async function loadKaConfig() {
+  try {
+    if (db && currentUser && !currentUser.uid.startsWith('local')) {
+      const snap = await getDoc(doc(db, 'users', currentUser.uid, 'config', 'lottery'));
+      if (snap.exists()) {
+        const d = snap.data();
+        kaDealers = d.kaDealers || [];
+        partners = d.partners || [];
+      }
+    } else {
+      kaDealers = JSON.parse(localStorage.getItem('kaDealers') || '[]');
+      partners = JSON.parse(localStorage.getItem('partners') || '[]');
+    }
+  } catch (e) { console.error('loadKaConfig', e); }
+}
+async function saveKaConfig() {
+  try {
+    if (db && currentUser && !currentUser.uid.startsWith('local')) {
+      await setDoc(doc(db, 'users', currentUser.uid, 'config', 'lottery'), { kaDealers, partners }, { merge: true });
+    } else {
+      localStorage.setItem('kaDealers', JSON.stringify(kaDealers));
+      localStorage.setItem('partners', JSON.stringify(partners));
+    }
+  } catch (e) { console.error('saveKaConfig', e); }
+}
+
 const fmt = (n) => Number(n || 0).toLocaleString();
 const fmtSigned = (n) => (Number(n) > 0 ? '+' : '') + Number(n || 0).toLocaleString();
 const fmtShort = (n) => {
@@ -199,6 +243,12 @@ function showApp() {
   loadWeek();
   setupNumpad();
 
+  // Load ka dealers + partners config, then render
+  loadKaConfig().then(() => {
+    renderPartnerRows();
+    recalc();
+  });
+
   // Init 2D dealer module (Firestore-backed; disabled in local mode)
   const isLocal = currentUser.uid.startsWith('local');
   initLottery(isLocal ? null : db, isLocal ? null : currentUser.uid);
@@ -265,6 +315,7 @@ function buildTable() {
                onclick="openNumpad(this, ${i}, 'win')">
       </td>
       <td class="pl-cell" id="pl_${i}">0</td>
+      <td class="ka-cell empty" id="ka_${i}" onclick="openKaSheet(${i})">＋</td>
       <td class="daily-cell" id="daily_${i}">${isEvening ? '0' : ''}</td>
     `;
     tbody.appendChild(tr);
@@ -345,8 +396,9 @@ function getValue(id) {
 window.recalc = function() {
   const commRate = Number(document.getElementById('commRate').value) / 100;
   const payoutMult = Number(document.getElementById('payoutMult').value);
-  let totBets = 0, totComm = 0, totPay = 0, totPL = 0, totWin = 0;
+  let totBets = 0, totComm = 0, totPay = 0, totPL = 0, totWin = 0, totKa = 0;
   const sessionPLs = [];
+  const sessionKas = [];
 
   for (let i = 0; i < SESSIONS.length; i++) {
     const bet = getValue('bet_' + i);
@@ -363,14 +415,33 @@ window.recalc = function() {
       plCell.className = 'pl-cell ' + (pl >= 0 ? 'positive' : 'negative');
     } else { plCell.textContent = ''; plCell.className = 'pl-cell'; }
 
-    totBets += bet; totWin += win; totComm += comm; totPay += payout; totPL += pl;
+    // Ka (forwarded to other dealers) P/L
+    const kaEntries = weekKa[i] || [];
+    const hasKa = kaEntries.some(e => Number(e.amount) || Number(e.win));
+    const kpl = kaRowPL(i, payoutMult);
+    sessionKas[i] = kpl;
+    const kaCell = document.getElementById('ka_' + i);
+    if (kaCell) {
+      if (hasKa) {
+        kaCell.textContent = fmtAutoSigned(kpl);
+        kaCell.title = fmtSigned(kpl);
+        kaCell.className = 'ka-cell ' + (kpl >= 0 ? 'positive' : 'negative');
+      } else {
+        kaCell.textContent = '＋';
+        kaCell.title = '';
+        kaCell.className = 'ka-cell empty';
+      }
+    }
+
+    totBets += bet; totWin += win; totComm += comm; totPay += payout; totPL += pl; totKa += kpl;
 
     if (SESSIONS[i].session === 'evening') {
-      const morningPL = sessionPLs[i - 1] || 0;
-      const daily = morningPL + pl;
+      // daily = sell + ka of both sessions
+      const daily = (sessionPLs[i - 1] || 0) + pl + (sessionKas[i - 1] || 0) + kpl;
       const dailyCell = document.getElementById('daily_' + i);
       const morningBet = getValue('bet_' + (i - 1));
-      if (morningBet > 0 || bet > 0) {
+      const morningKa = (weekKa[i - 1] || []).some(e => Number(e.amount) || Number(e.win));
+      if (morningBet > 0 || bet > 0 || hasKa || morningKa) {
         dailyCell.textContent = fmtAutoSigned(daily);
         dailyCell.title = fmtSigned(daily);
         dailyCell.className = 'daily-cell ' + (daily >= 0 ? 'positive' : 'negative');
@@ -378,15 +449,38 @@ window.recalc = function() {
     }
   }
 
+  const fee = Number(machineFee || 0);
+  const net = totPL + totKa - fee;
+
   const sumBetEl = document.getElementById('sumBet');
   const sumWinEl = document.getElementById('sumWin');
   const sumPLEl = document.getElementById('sumPL');
+  const sumKaEl = document.getElementById('sumKa');
+  const sumDayEl = document.getElementById('sumDay');
   const grandEl = document.getElementById('grandTotal');
   sumBetEl.textContent = fmtAuto(totBets); sumBetEl.title = fmt(totBets);
   sumWinEl.textContent = fmtAuto(totWin); sumWinEl.title = fmt(totWin);
   sumPLEl.textContent = fmtAutoSigned(totPL); sumPLEl.title = fmtSigned(totPL);
   sumPLEl.style.color = totPL >= 0 ? '#86efac' : '#fca5a5';
-  grandEl.textContent = fmtAutoSigned(totPL); grandEl.title = fmtSigned(totPL);
+  if (sumKaEl) {
+    sumKaEl.textContent = fmtAutoSigned(totKa); sumKaEl.title = fmtSigned(totKa);
+    sumKaEl.style.color = totKa >= 0 ? '#86efac' : '#fca5a5';
+  }
+  if (sumDayEl) {
+    sumDayEl.textContent = fmtAutoSigned(totPL + totKa); sumDayEl.title = fmtSigned(totPL + totKa);
+    sumDayEl.style.color = (totPL + totKa) >= 0 ? '#86efac' : '#fca5a5';
+  }
+  grandEl.textContent = fmtAutoSigned(net); grandEl.title = fmtSigned(net);
+
+  // Weekly summary card
+  const wsSell = document.getElementById('wsSell');
+  const wsKa = document.getElementById('wsKa');
+  const wsNet = document.getElementById('wsNet');
+  if (wsSell) { wsSell.textContent = fmtSigned(totPL); wsSell.className = totPL >= 0 ? 'positive' : 'negative'; }
+  if (wsKa) { wsKa.textContent = fmtSigned(totKa); wsKa.className = totKa >= 0 ? 'positive' : 'negative'; }
+  if (wsNet) { wsNet.textContent = fmtSigned(net); wsNet.className = net >= 0 ? 'positive' : 'negative'; }
+
+  renderPartnerShares(net);
 
   document.getElementById('qsBet').textContent = fmtAuto(totBets);
   document.getElementById('qsBet').title = fmt(totBets);
@@ -398,6 +492,179 @@ window.recalc = function() {
   if (saveTimer) clearTimeout(saveTimer);
   document.getElementById('saveStatus').className = 'save-indicator saving';
   saveTimer = setTimeout(saveWeek, 800);
+};
+
+window.onFeeInput = function(el) {
+  machineFee = el.value.replace(/[^0-9]/g, '');
+  el.value = machineFee;
+  recalc();
+};
+
+// ===== Ka sheet (per-session forwards) =====
+window.openKaSheet = function(i) {
+  kaSheetRow = i;
+  document.getElementById('kaSheetTitle').textContent =
+    `${SESSIONS[i].dayName} ${SESSIONS[i].label} — ကာစာရင်း`;
+  renderKaEntries();
+  document.getElementById('kaSheet').style.display = 'flex';
+};
+
+window.closeKaSheet = function() {
+  document.getElementById('kaSheet').style.display = 'none';
+  kaSheetRow = null;
+  recalc();
+};
+
+function renderKaEntries() {
+  const el = document.getElementById('kaEntries');
+  const entries = weekKa[kaSheetRow] || [];
+  const payoutMult = Number(document.getElementById('payoutMult').value || 80);
+
+  if (entries.length === 0) {
+    el.innerHTML = '<p style="color:#9ca3af;font-size:13px;text-align:center;padding:14px;">ကာဒိုင် မထည့်ရသေးပါ</p>';
+  } else {
+    el.innerHTML = entries.map((e, idx) => {
+      const pl = kaEntryPL(e, payoutMult);
+      const inRegistry = kaDealers.some(d => d.id === e.dealerId);
+      return `
+      <div class="ka-entry">
+        <div class="ka-row1">
+          <select onchange="kaDealerChange(${idx}, this.value)">
+            ${!inRegistry && e.dealerId ? `<option value="${e.dealerId}" selected>${e.name || 'ဒိုင်'} /${e.comm || 0}%</option>` : ''}
+            ${kaDealers.map(d => `<option value="${d.id}" ${d.id === e.dealerId ? 'selected' : ''}>${d.name} /${d.comm}%</option>`).join('')}
+            <option value="__new">➕ ဒိုင်အသစ်ထည့်...</option>
+          </select>
+          <button class="ka-del" onclick="kaDelEntry(${idx})">🗑️</button>
+        </div>
+        <div class="ka-inputs">
+          <label>ကာတင်ငွေ
+            <input inputmode="numeric" value="${e.amount || ''}" oninput="kaFieldChange(${idx}, 'amount', this)">
+          </label>
+          <label>ကာပေါက်ငွေ
+            <input inputmode="numeric" value="${e.win || ''}" oninput="kaFieldChange(${idx}, 'win', this)">
+          </label>
+        </div>
+        <div class="ka-pl ${pl >= 0 ? 'positive' : 'negative'}" id="kaEntryPL_${idx}">${fmtSigned(pl)}</div>
+      </div>`;
+    }).join('');
+  }
+  updateKaSheetTotal();
+}
+
+function updateKaSheetTotal() {
+  const payoutMult = Number(document.getElementById('payoutMult').value || 80);
+  const total = kaRowPL(kaSheetRow, payoutMult);
+  const el = document.getElementById('kaSheetTotal');
+  el.textContent = fmtSigned(total);
+  el.className = total >= 0 ? 'positive' : 'negative';
+}
+
+window.kaAddEntry = async function() {
+  if (kaDealers.length === 0) {
+    const added = await promptNewDealer();
+    if (!added) return;
+  }
+  const d = kaDealers[0];
+  if (!weekKa[kaSheetRow]) weekKa[kaSheetRow] = [];
+  weekKa[kaSheetRow].push({ dealerId: d.id, name: d.name, comm: d.comm, amount: '', win: '' });
+  renderKaEntries();
+};
+
+async function promptNewDealer() {
+  const name = prompt('ကာဒိုင် နာမည်:');
+  if (!name || !name.trim()) return null;
+  const comm = Number(prompt('ကော်မရှင် % (ဥပမာ 16):') || 0);
+  const dealer = { id: genId2(), name: name.trim(), comm };
+  kaDealers.push(dealer);
+  await saveKaConfig();
+  return dealer;
+}
+
+window.kaDealerChange = async function(idx, val) {
+  const entries = weekKa[kaSheetRow] || [];
+  const e = entries[idx];
+  if (!e) return;
+  if (val === '__new') {
+    const dealer = await promptNewDealer();
+    if (dealer) { e.dealerId = dealer.id; e.name = dealer.name; e.comm = dealer.comm; }
+  } else {
+    const d = kaDealers.find(x => x.id === val);
+    if (d) { e.dealerId = d.id; e.name = d.name; e.comm = d.comm; }
+  }
+  renderKaEntries();
+  recalc();
+};
+
+window.kaFieldChange = function(idx, field, el) {
+  const entries = weekKa[kaSheetRow] || [];
+  const e = entries[idx];
+  if (!e) return;
+  const raw = el.value.replace(/[^0-9]/g, '');
+  el.value = raw;
+  e[field] = raw;
+  const payoutMult = Number(document.getElementById('payoutMult').value || 80);
+  const pl = kaEntryPL(e, payoutMult);
+  const plEl = document.getElementById('kaEntryPL_' + idx);
+  if (plEl) { plEl.textContent = fmtSigned(pl); plEl.className = 'ka-pl ' + (pl >= 0 ? 'positive' : 'negative'); }
+  updateKaSheetTotal();
+  recalc();
+};
+
+window.kaDelEntry = function(idx) {
+  const entries = weekKa[kaSheetRow] || [];
+  entries.splice(idx, 1);
+  if (entries.length === 0) delete weekKa[kaSheetRow];
+  renderKaEntries();
+  recalc();
+};
+
+// ===== Partner split =====
+function renderPartnerRows() {
+  const el = document.getElementById('partnerList');
+  if (!el) return;
+  if (partners.length === 0) {
+    el.innerHTML = '<p style="color:#9ca3af;font-size:12px;text-align:center;padding:8px;">Partner မရှိသေးပါ — + ထည့် နှိပ်ပါ</p>';
+    return;
+  }
+  const totalPct = partners.reduce((s, p) => s + Number(p.pct || 0), 0);
+  el.innerHTML = partners.map((p, i) => `
+    <div class="partner-row">
+      <span class="p-name">${p.name}</span>
+      <span class="p-pct">${p.pct}%</span>
+      <span class="p-share" id="pshare_${i}">—</span>
+      <button onclick="delPartner(${i})">✕</button>
+    </div>`).join('') +
+    (totalPct !== 100 ? `<p style="color:#d97706;font-size:11px;text-align:right;margin-top:4px;">⚠️ စုစုပေါင်း ${totalPct}% (100% မဟုတ်)</p>` : '');
+}
+
+function renderPartnerShares(net) {
+  partners.forEach((p, i) => {
+    const el = document.getElementById('pshare_' + i);
+    if (el) {
+      const share = Math.round(net * Number(p.pct || 0) / 100);
+      el.textContent = fmtSigned(share);
+      el.className = 'p-share ' + (share >= 0 ? 'positive' : 'negative');
+    }
+  });
+}
+
+window.addPartner = async function() {
+  const name = prompt('Partner နာမည်:');
+  if (!name || !name.trim()) return;
+  const pct = Number(prompt('ရာခိုင်နှုန်း % (ဥပမာ 40):') || 0);
+  if (pct <= 0) return;
+  partners.push({ name: name.trim(), pct });
+  await saveKaConfig();
+  renderPartnerRows();
+  recalc();
+};
+
+window.delPartner = async function(i) {
+  if (!confirm(`${partners[i]?.name} ကို ဖျက်မလား?`)) return;
+  partners.splice(i, 1);
+  await saveKaConfig();
+  renderPartnerRows();
+  recalc();
 };
 
 window.onNoteChange = function() {
@@ -423,6 +690,8 @@ function collectData() {
       bet: String(getValue('bet_' + i)),
       win: String(getValue('win_' + i)),
     })),
+    ka: weekKa,
+    machineFee: machineFee || '',
   };
 }
 
@@ -474,11 +743,20 @@ window.loadWeek = async function() {
     if (win) { win.value = ''; win.dataset.value = ''; }
   }
   document.getElementById('weekNote').value = '';
+  weekKa = {};
+  machineFee = '';
+  const feeInput = document.getElementById('machineFeeInput');
+  if (feeInput) feeInput.value = '';
 
   if (data) {
     if (data.commRate) document.getElementById('commRate').value = data.commRate;
     if (data.payoutMult) document.getElementById('payoutMult').value = data.payoutMult;
     if (data.note) document.getElementById('weekNote').value = data.note;
+    if (data.ka) weekKa = data.ka;
+    if (data.machineFee) {
+      machineFee = String(data.machineFee);
+      if (feeInput) feeInput.value = machineFee;
+    }
     if (data.rows) {
       data.rows.forEach((r, i) => {
         const betVal = Number(r.bet || 0);
@@ -551,6 +829,21 @@ function computeWeekTotals(item) {
   for (let d = 0; d < 5; d++) {
     dailyPLs.push((sessionPLs[d * 2] || 0) + (sessionPLs[d * 2 + 1] || 0));
   }
+  // Ka (forwards to other dealers)
+  if (item.ka) {
+    Object.entries(item.ka).forEach(([idx, entries]) => {
+      let kpl = 0;
+      (entries || []).forEach(e => {
+        const amt = Number(e.amount) || 0, win = Number(e.win) || 0, comm = Number(e.comm) || 0;
+        if (amt || win) kpl += win * payoutMult - Math.round(amt * (1 - comm / 100));
+      });
+      totPL += kpl;
+      const dayI = Math.floor(Number(idx) / 2);
+      if (dailyPLs[dayI] !== undefined) dailyPLs[dayI] += kpl;
+    });
+  }
+  // Weekly machine fee
+  totPL -= Number(item.machineFee || 0);
   return { totBet, totWin, totComm, totPay, totPL, dailyPLs };
 }
 
@@ -870,17 +1163,27 @@ window.changeMonth = function(direction) {
 window.exportCSV = function() {
   const commRate = Number(document.getElementById('commRate').value) / 100;
   const payoutMult = Number(document.getElementById('payoutMult').value);
-  const rows = [['#', 'Day', 'Session', 'Total Bet', 'Win Bet', 'Commission', 'Payout', 'P/L']];
+  const rows = [['#', 'Day', 'Session', 'Total Bet', 'Win Bet', 'Commission', 'Payout', 'Sell P/L', 'Ka P/L', 'Total']];
+  let totSell = 0, totKa = 0;
   for (let i = 0; i < SESSIONS.length; i++) {
     const bet = getValue('bet_' + i);
     const win = getValue('win_' + i);
     const comm = Math.round(bet * commRate);
     const pay = win * payoutMult;
+    const sellPL = bet - comm - pay;
+    const kpl = kaRowPL(i, payoutMult);
+    totSell += sellPL; totKa += kpl;
     rows.push([
       i + 1, SESSIONS[i].dayName, SESSIONS[i].label,
-      bet, win, comm, pay, bet - comm - pay,
+      bet, win, comm, pay, sellPL, kpl, sellPL + kpl,
     ]);
   }
+  const fee = Number(machineFee || 0);
+  rows.push([]);
+  rows.push(['', '', 'Sell P/L', totSell]);
+  rows.push(['', '', 'Ka P/L', totKa]);
+  rows.push(['', '', 'Machine Fee', -fee]);
+  rows.push(['', '', 'NET', totSell + totKa - fee]);
   const csv = rows.map(r => r.join(',')).join('\n');
   const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' });
   const a = document.createElement('a');
@@ -898,6 +1201,10 @@ window.clearWeek = async function() {
     if (w) { w.value = ''; w.dataset.value = ''; }
   }
   document.getElementById('weekNote').value = '';
+  weekKa = {};
+  machineFee = '';
+  const feeInput = document.getElementById('machineFeeInput');
+  if (feeInput) feeInput.value = '';
   const weekStart = document.getElementById('weekStart').value;
   try {
     if (db && currentUser && !currentUser.uid.startsWith('local')) {
