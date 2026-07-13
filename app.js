@@ -38,6 +38,7 @@ let currentMonth = new Date(); // for calendar/monthly navigation
 // Ka (forward-to-dealer) state
 let weekKa = {};        // { rowIdx: [{dealerId, name, comm, amount, win}] }
 let machineFee = '';    // weekly machine fee
+let bankRows = [];      // [{name, in, out}] — bank reconciliation per week
 let kaDealers = [];     // [{id, name, comm}] — registry
 let partners = [];      // [{name, pct}]
 let kaSheetRow = null;
@@ -481,6 +482,7 @@ window.recalc = function() {
   if (wsNet) { wsNet.textContent = fmtSigned(net); wsNet.className = net >= 0 ? 'positive' : 'negative'; }
 
   renderPartnerShares(net);
+  updateBankTotals(net);
 
   document.getElementById('qsBet').textContent = fmtAuto(totBets);
   document.getElementById('qsBet').title = fmt(totBets);
@@ -667,6 +669,87 @@ window.delPartner = async function(i) {
   recalc();
 };
 
+// ===== Bank reconciliation table =====
+function renderBankRows() {
+  const el = document.getElementById('bankRows');
+  if (!el) return;
+  if (bankRows.length === 0) {
+    el.innerHTML = '<p style="color:#9ca3af;font-size:12px;text-align:center;padding:10px;">စာရင်း မရှိသေးပါ — + ထည့် နှိပ်ပါ</p>';
+    return;
+  }
+  el.innerHTML = bankRows.map((r, i) => {
+    const pl = (Number(r.in) || 0) - (Number(r.out) || 0);
+    return `
+    <div class="bank-row">
+      <input value="${(r.name || '').replace(/"/g, '&quot;')}" placeholder="အမည်"
+             oninput="bankFieldChange(${i}, 'name', this)">
+      <input class="num" inputmode="numeric" value="${r.in || ''}" placeholder="0"
+             oninput="bankFieldChange(${i}, 'in', this)">
+      <input class="num" inputmode="numeric" value="${r.out || ''}" placeholder="0"
+             oninput="bankFieldChange(${i}, 'out', this)">
+      <span class="bank-pl ${pl >= 0 ? 'positive' : 'negative'}" id="bankPL_${i}">${fmtSigned(pl)}</span>
+      <button onclick="delBankRow(${i})">✕</button>
+    </div>`;
+  }).join('');
+}
+
+window.addBankRow = function() {
+  bankRows.push({ name: '', in: '', out: '' });
+  renderBankRows();
+  recalc();
+};
+
+window.bankFieldChange = function(i, field, el) {
+  const r = bankRows[i];
+  if (!r) return;
+  if (field === 'name') {
+    r.name = el.value;
+  } else {
+    const raw = el.value.replace(/[^0-9]/g, '');
+    el.value = raw;
+    r[field] = raw;
+    const pl = (Number(r.in) || 0) - (Number(r.out) || 0);
+    const plEl = document.getElementById('bankPL_' + i);
+    if (plEl) { plEl.textContent = fmtSigned(pl); plEl.className = 'bank-pl ' + (pl >= 0 ? 'positive' : 'negative'); }
+  }
+  recalc(); // updates totals + reconcile + debounced save (inputs not re-rendered)
+};
+
+window.delBankRow = function(i) {
+  bankRows.splice(i, 1);
+  renderBankRows();
+  recalc();
+};
+
+function updateBankTotals(net) {
+  const inEl = document.getElementById('bankInTotal');
+  if (!inEl) return;
+  let tIn = 0, tOut = 0;
+  bankRows.forEach(r => { tIn += Number(r.in) || 0; tOut += Number(r.out) || 0; });
+  const bankPL = tIn - tOut;
+  inEl.textContent = fmt(tIn);
+  document.getElementById('bankOutTotal').textContent = fmt(tOut);
+  const plEl = document.getElementById('bankPLTotal');
+  plEl.textContent = fmtSigned(bankPL);
+  plEl.className = bankPL >= 0 ? 'positive' : 'negative';
+
+  // Reconcile with 2D net P/L
+  const rec = document.getElementById('bankReconcile');
+  if (!rec) return;
+  const hasBank = bankRows.some(r => Number(r.in) || Number(r.out));
+  if (!hasBank) { rec.innerHTML = ''; rec.className = 'bank-reconcile'; rec.style.display = 'none'; return; }
+  rec.style.display = 'block';
+  const diff = bankPL - net;
+  const match = diff === 0;
+  rec.className = 'bank-reconcile ' + (match ? 'match' : 'mismatch');
+  rec.innerHTML = `
+    <div class="rec-line"><span>2D အသားတင် P/L</span><b>${fmtSigned(net)}</b></div>
+    <div class="rec-line"><span>Bank Total P/L</span><b>${fmtSigned(bankPL)}</b></div>
+    <div class="rec-line" style="border-top:1px dashed currentColor;padding-top:4px;margin-top:4px;">
+      <span>${match ? '✅ ကိုက်ညီတယ်' : '⚠️ ကွာခြားချက်'}</span><b>${match ? '0' : fmtSigned(diff)}</b>
+    </div>`;
+}
+
 window.onNoteChange = function() {
   if (saveTimer) clearTimeout(saveTimer);
   document.getElementById('saveStatus').className = 'save-indicator saving';
@@ -692,6 +775,7 @@ function collectData() {
     })),
     ka: weekKa,
     machineFee: machineFee || '',
+    bank: bankRows,
   };
 }
 
@@ -745,6 +829,7 @@ window.loadWeek = async function() {
   document.getElementById('weekNote').value = '';
   weekKa = {};
   machineFee = '';
+  bankRows = [];
   const feeInput = document.getElementById('machineFeeInput');
   if (feeInput) feeInput.value = '';
 
@@ -753,6 +838,7 @@ window.loadWeek = async function() {
     if (data.payoutMult) document.getElementById('payoutMult').value = data.payoutMult;
     if (data.note) document.getElementById('weekNote').value = data.note;
     if (data.ka) weekKa = data.ka;
+    if (data.bank) bankRows = data.bank;
     if (data.machineFee) {
       machineFee = String(data.machineFee);
       if (feeInput) feeInput.value = machineFee;
@@ -768,6 +854,7 @@ window.loadWeek = async function() {
       });
     }
   }
+  renderBankRows();
   recalc();
 };
 
@@ -1203,6 +1290,8 @@ window.clearWeek = async function() {
   document.getElementById('weekNote').value = '';
   weekKa = {};
   machineFee = '';
+  bankRows = [];
+  renderBankRows();
   const feeInput = document.getElementById('machineFeeInput');
   if (feeInput) feeInput.value = '';
   const weekStart = document.getElementById('weekStart').value;

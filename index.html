@@ -154,6 +154,26 @@
       <div id="partnerList"></div>
     </div>
 
+    <!-- Bank transfer reconciliation -->
+    <div class="card" id="bankCard">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+        <h3 style="margin:0;">🏦 Bank အဝင်/အလွှဲ စာရင်း</h3>
+        <button onclick="addBankRow()" class="mini-add-btn">+ ထည့်</button>
+      </div>
+      <div class="bank-head">
+        <span>အမည်</span><span>အဝင်ငွေ</span><span>လွှဲငွေ</span><span>P/L</span><span></span>
+      </div>
+      <div id="bankRows"></div>
+      <div class="bank-total-row">
+        <span>Total</span>
+        <b id="bankInTotal">0</b>
+        <b id="bankOutTotal">0</b>
+        <b id="bankPLTotal">0</b>
+        <span></span>
+      </div>
+      <div class="bank-reconcile" id="bankReconcile"></div>
+    </div>
+
     <!-- Note for the week -->
     <div class="card note-card">
       <label>
@@ -656,7 +676,7 @@
 </nav>
 
 <link rel="manifest" href="manifest.json">
-<link rel="stylesheet" href="styles.css?v=22">
+<link rel="stylesheet" href="styles.css?v=23">
 
 <!-- PWA: Install banner & Update banner & Offline indicator -->
 <div id="pwaInstallBanner" class="pwa-banner install-banner" style="display:none;">
@@ -674,8 +694,8 @@
   <span>📴 Offline — Cached data ပြနေ</span>
 </div>
 
-<script type="module" src="firebase-config.js?v=22"></script>
-<script type="module" src="app.js?v=22"></script>
+<script type="module" src="firebase-config.js?v=23"></script>
+<script type="module" src="app.js?v=23"></script>
 
 <script>
   // ========== PWA Service Worker ==========

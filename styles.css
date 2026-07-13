@@ -1315,6 +1315,94 @@ tfoot .grand-row td:last-child {
 }
 .m-code b { color: #fbbf24; }
 
+/* ===== Bank reconciliation table ===== */
+.bank-head, .bank-row, .bank-total-row {
+  display: grid;
+  grid-template-columns: 1.3fr 1fr 1fr 0.95fr 22px;
+  gap: 6px;
+  align-items: center;
+}
+.bank-head {
+  font-size: 10.5px;
+  color: var(--text-muted);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  padding: 4px 2px 6px;
+  border-bottom: 1.5px solid #e5e7eb;
+}
+.bank-head span:nth-child(2), .bank-head span:nth-child(3), .bank-head span:nth-child(4) { text-align: right; }
+.bank-row {
+  padding: 5px 0;
+  border-bottom: 1px solid #f3f4f6;
+}
+.bank-row input {
+  width: 100%;
+  border: 1.5px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 8px;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  font-variant-numeric: tabular-nums;
+  background: white;
+  min-width: 0;
+}
+.bank-row input.num { text-align: right; }
+.bank-row input:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.12);
+}
+.bank-row .bank-pl {
+  text-align: right;
+  font-weight: 800;
+  font-size: 12.5px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.03em;
+  white-space: nowrap;
+}
+.bank-row button {
+  background: none; border: none;
+  color: #d1d5db; font-size: 14px; cursor: pointer;
+  padding: 0;
+}
+.bank-total-row {
+  padding: 10px 0 4px;
+  border-top: 2px solid #e5e7eb;
+  margin-top: 4px;
+  font-size: 13px;
+}
+.bank-total-row span:first-child { font-weight: 800; }
+.bank-total-row b {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.03em;
+  font-size: 12.5px;
+}
+.bank-reconcile {
+  margin-top: 10px;
+  border-radius: 12px;
+  padding: 11px 14px;
+  font-size: 12.5px;
+  font-weight: 600;
+  line-height: 1.8;
+}
+.bank-reconcile.match {
+  background: #f0fdf4;
+  border: 1.5px solid #86efac;
+  color: #166534;
+}
+.bank-reconcile.mismatch {
+  background: #fffbeb;
+  border: 1.5px solid #fcd34d;
+  color: #78350f;
+}
+.bank-reconcile .rec-line {
+  display: flex; justify-content: space-between;
+  font-variant-numeric: tabular-nums;
+}
+
 /* ===== Ka sheet (modal) ===== */
 .ka-overlay {
   position: fixed; inset: 0;
