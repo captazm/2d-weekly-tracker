@@ -410,11 +410,13 @@ window.recalc = function() {
     sessionPLs[i] = pl;
 
     const plCell = document.getElementById('pl_' + i);
-    if (bet > 0 || win > 0) {
-      plCell.textContent = fmtAutoSigned(pl);
-      plCell.title = fmtSigned(pl); // full value on hover/long-press
-      plCell.className = 'pl-cell ' + (pl >= 0 ? 'positive' : 'negative');
-    } else { plCell.textContent = ''; plCell.className = 'pl-cell'; }
+    if (plCell) {
+      if (bet > 0 || win > 0) {
+        plCell.textContent = fmtAutoSigned(pl);
+        plCell.title = fmtSigned(pl); // full value on hover/long-press
+        plCell.className = 'pl-cell ' + (pl >= 0 ? 'positive' : 'negative');
+      } else { plCell.textContent = ''; plCell.className = 'pl-cell'; }
+    }
 
     // Ka (forwarded to other dealers) P/L
     const kaEntries = weekKa[i] || [];
@@ -440,6 +442,7 @@ window.recalc = function() {
       // daily = sell + ka of both sessions
       const daily = (sessionPLs[i - 1] || 0) + pl + (sessionKas[i - 1] || 0) + kpl;
       const dailyCell = document.getElementById('daily_' + i);
+      if (!dailyCell) continue;
       const morningBet = getValue('bet_' + (i - 1));
       const morningKa = (weekKa[i - 1] || []).some(e => Number(e.amount) || Number(e.win));
       if (morningBet > 0 || bet > 0 || hasKa || morningKa) {
