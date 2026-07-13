@@ -1302,6 +1302,18 @@ tfoot .grand-row td:last-child {
   color: #1e40af;
   white-space: nowrap;
 }
+.m-code {
+  background: #1f2937;
+  color: #d1fae5;
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-family: monospace;
+  font-size: 12px;
+  line-height: 1.8;
+  margin: 6px 0 12px;
+  overflow-x: auto;
+}
+.m-code b { color: #fbbf24; }
 
 /* ===== Ka sheet (modal) ===== */
 .ka-overlay {
