@@ -269,7 +269,7 @@ function renderDrawsBody() {
             <span class="wk-num" style="background:${d.session==='morning'?'linear-gradient(135deg,#f59e0b,#d97706)':'linear-gradient(135deg,#6366f1,#4f46e5)'}">${d.session==='morning'?'☀️':'🌙'}</span>
             <div class="wk-info">
               <div class="wk-date">${d.date} — ${d.session==='morning'?'မနက်':'ည'}</div>
-              <div class="wk-note">${d.status==='settled' ? `ပေါက်: ${d.winningNumber} | P/L: ${fmtSigned(t.pl||0)}` : `${(d.bets||[]).length} အကွက် | ${fmt((d.bets||[]).reduce((s,b)=>s+b.amount,0))}`}</div>
+              <div class="wk-note">${d.status==='settled' ? `ပေါက်: ${d.winningNumber} | P/L: ${fmtSigned(t.pl||0)}` : `${(d.bets||[]).length} ကွက် | ${fmt((d.bets||[]).reduce((s,b)=>s+b.amount,0))}`}</div>
             </div>
             <span class="wk-pl ${d.status==='settled' ? ((t.pl||0)>=0?'positive':'negative') : ''}" style="font-size:12px;">
               ${d.status==='settled' ? fmtSigned(t.pl||0) : '🟢 ဖွင့်'}
@@ -591,7 +591,7 @@ window.lotSubmitBets = async function() {
   document.getElementById('lotBetInput').value = '';
 
   let html = '<div style="margin-top:12px;font-size:13px;max-height:260px;overflow-y:auto;">';
-  html += `<div style="font-weight:700;color:var(--primary-dark);margin-bottom:6px;">✓ ${results.length} အကွက် ထည့်ပြီး (${agent.name})</div>`;
+  html += `<div style="font-weight:700;color:var(--primary-dark);margin-bottom:6px;">✓ ${results.length} ကွက် ထည့်ပြီး (${agent.name})</div>`;
   if (blockedSkipped.length) {
     html += `<div style="background:#fee2e2;color:#991b1b;border-radius:10px;padding:10px;margin-bottom:8px;font-weight:700;">🚫 ပိတ်ဂဏန်း (မလက်ခံ): ${uniq(blockedSkipped).join(', ')}</div>`;
   }
@@ -626,7 +626,7 @@ function renderBetList(el) {
         <div class="week-row">
           <div class="wk-info">
             <div class="wk-date">${a.name}</div>
-            <div class="wk-note">${Object.keys(a.nums).length} အကွက်</div>
+            <div class="wk-note">${Object.keys(a.nums).length} ကွက်</div>
           </div>
           <span class="wk-pl" style="color:#1e40af;">${fmt(a.total)}</span>
           <button onclick="lotCopyAgent('${aid}')" style="background:none;border:none;font-size:17px;cursor:pointer;">📋</button>
@@ -742,7 +742,7 @@ function renderGrid(el) {
     </div>
     ${top.length > 0 ? `
     <div class="card">
-      <h3>📊 ခန့်မှန်း — ထိုးငွေအများဆုံး ၁၀ အကွက်</h3>
+      <h3>📊 ခန့်မှန်း — ထိုးငွေအများဆုံး ၁၀ ကွက်</h3>
       ${top.map((e, i) => `
         <div style="display:flex;align-items:center;gap:10px;padding:7px 6px;border-bottom:1px solid #f3f4f6;font-size:13px;">
           <span style="color:#9ca3af;font-size:11px;width:18px;">${i + 1}</span>
