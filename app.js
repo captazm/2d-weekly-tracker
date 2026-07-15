@@ -45,6 +45,52 @@ let kaSheetRow = null;
 
 const genId2 = () => Math.random().toString(36).slice(2, 9) + Date.now().toString(36);
 
+// Local-timezone date key (toISOString shifts a day before 6:30am MMT — caused "lost" weeks)
+function localISO(d) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+// Normalize any date string to its week's Monday key
+function mondayOf(dateStr) {
+  const d = new Date(dateStr + 'T12:00:00');
+  const dow = d.getDay();
+  d.setDate(d.getDate() + (dow === 0 ? 1 : 1 - dow));
+  return localISO(d);
+}
+
+// One-time repair: merge docs saved under wrong (non-Monday) week keys into the correct Monday doc
+async function migrateWeekKeys() {
+  if (!db || !currentUser || currentUser.uid.startsWith('local')) return;
+  try {
+    const snap = await getDocs(collection(db, 'users', currentUser.uid, 'weeks'));
+    const docs = {};
+    snap.forEach(s => docs[s.id] = s.data());
+    const hasContent = (d) => !!(
+      (d?.rows || []).some(r => Number(r.bet) || Number(r.win)) ||
+      Object.keys(d?.ka || {}).length > 0 ||
+      (d?.bank || []).length > 0 ||
+      Number(d?.machineFee)
+    );
+    for (const [id, data] of Object.entries(docs)) {
+      const dow = new Date(id + 'T12:00:00').getDay();
+      if (dow === 1) continue; // correct Monday key
+      const target = mondayOf(id);
+      if (hasContent(data)) {
+        if (!hasContent(docs[target])) {
+          // move data to the correct Monday doc
+          const moved = { ...data, weekStart: target, weekEnd: addDays(target, 4), updatedAt: new Date().toISOString() };
+          await setDoc(doc(db, 'users', currentUser.uid, 'weeks', target), moved);
+          docs[target] = moved;
+          await deleteDoc(doc(db, 'users', currentUser.uid, 'weeks', id));
+          console.log('migrated week', id, '→', target);
+        }
+        // target also has data → keep both, don't destroy anything
+      } else {
+        await deleteDoc(doc(db, 'users', currentUser.uid, 'weeks', id));
+      }
+    }
+  } catch (e) { console.error('migrateWeekKeys', e); }
+}
+
 function kaEntryPL(e, payoutMult) {
   const amt = Number(e.amount) || 0, win = Number(e.win) || 0, comm = Number(e.comm) || 0;
   if (!amt && !win) return 0;
@@ -237,12 +283,12 @@ function showApp() {
   const diff = day === 0 ? -6 : 1 - day;
   const monday = new Date(today);
   monday.setDate(today.getDate() + diff);
-  document.getElementById('weekStart').value = monday.toISOString().slice(0, 10);
+  document.getElementById('weekStart').value = localISO(monday);
   currentMonth = new Date(today.getFullYear(), today.getMonth(), 1);
 
   buildTable();
-  loadWeek();
   setupNumpad();
+  migrateWeekKeys().finally(() => { allWeeksCache = null; loadWeek(); });
 
   // Load ka dealers + partners config, then render
   loadKaConfig().then(() => {
@@ -785,7 +831,7 @@ function collectData() {
 function addDays(dateStr, days) {
   const d = new Date(dateStr);
   d.setDate(d.getDate() + days);
-  return d.toISOString().slice(0, 10);
+  return localISO(d);
 }
 
 async function saveWeek() {
@@ -808,8 +854,13 @@ async function saveWeek() {
 }
 
 window.loadWeek = async function() {
-  const weekStart = document.getElementById('weekStart').value;
+  let weekStart = document.getElementById('weekStart').value;
   if (!weekStart) return;
+  const normalized = mondayOf(weekStart);
+  if (normalized !== weekStart) {
+    weekStart = normalized;
+    document.getElementById('weekStart').value = normalized;
+  }
   updateWeekLabel(weekStart);
 
   let data = null;
@@ -873,7 +924,7 @@ window.changeWeek = function(direction) {
   const input = document.getElementById('weekStart');
   const d = new Date(input.value);
   d.setDate(d.getDate() + direction * 7);
-  input.value = d.toISOString().slice(0, 10);
+  input.value = localISO(d);
   loadWeek();
 };
 
@@ -970,7 +1021,7 @@ async function renderCalendar() {
       const day = new Date(wd);
       day.setDate(wd.getDate() + d);
       if (day.getFullYear() === year && day.getMonth() === month) {
-        const dayStr = day.toISOString().slice(0, 10);
+        const dayStr = localISO(day);
         dailyPLMap[dayStr] = totals.dailyPLs[d];
         if (w.note) dailyNoteMap[dayStr] = w.note;
         monthTotal += totals.dailyPLs[d];
@@ -1006,11 +1057,11 @@ async function renderCalendar() {
     grid.appendChild(empty);
   }
 
-  const todayStr = new Date().toISOString().slice(0, 10);
+  const todayStr = localISO(new Date());
 
   for (let d = 1; d <= lastDay.getDate(); d++) {
     const date = new Date(year, month, d);
-    const dateStr = date.toISOString().slice(0, 10);
+    const dateStr = localISO(date);
     const pl = dailyPLMap[dateStr];
     const cell = document.createElement('div');
     cell.className = 'cal-cell';
@@ -1031,7 +1082,7 @@ async function renderCalendar() {
       const diff = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
       const monday = new Date(dt);
       monday.setDate(dt.getDate() + diff);
-      document.getElementById('weekStart').value = monday.toISOString().slice(0, 10);
+      document.getElementById('weekStart').value = localISO(monday);
       switchView('week');
       loadWeek();
     };

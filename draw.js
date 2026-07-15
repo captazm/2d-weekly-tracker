@@ -15,6 +15,7 @@ let listMode = 'draws';   // 'draws' | 'settle'
 let settleScope = 'all';  // 'all' | 'today' | 'month'
 
 const fmt = (n) => Number(n || 0).toLocaleString();
+const localISO = (x) => `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, '0')}-${String(x.getDate()).padStart(2, '0')}`;
 const fmtSigned = (n) => (Number(n) > 0 ? '+' : '') + Number(n || 0).toLocaleString();
 const genId = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
 const uniq = (a) => [...new Set(a)];
@@ -253,7 +254,7 @@ function renderDrawsBody() {
   el.innerHTML = `
     <div class="card">
       <div style="display:flex;gap:8px;margin-bottom:12px;">
-        <input type="date" id="lotNewDate" value="${new Date().toISOString().slice(0,10)}"
+        <input type="date" id="lotNewDate" value="${localISO(new Date())}"
                style="flex:1;border:1.5px solid var(--border);border-radius:10px;padding:10px;font-family:inherit;font-weight:600;">
         <select id="lotNewSession" style="border:1.5px solid var(--border);border-radius:10px;padding:10px;font-family:inherit;font-weight:600;">
           <option value="morning">မနက်</option>
@@ -285,7 +286,7 @@ function renderSettleBody() {
   const el = document.getElementById('lotListBody');
   if (!el) return;
 
-  const today = new Date().toISOString().slice(0, 10);
+  const today = localISO(new Date());
   const thisMonth = today.slice(0, 7);
   const settled = drawsCache.filter(d => d.status === 'settled').filter(d => {
     if (settleScope === 'today') return d.date === today;
@@ -923,7 +924,7 @@ async function feedWeekly(dateStr, session, netSales, winNet) {
     if (dow === 0 || dow === 6) return;
     const monday = new Date(d);
     monday.setDate(d.getDate() - (dow - 1));
-    const weekStart = monday.toISOString().slice(0, 10);
+    const weekStart = localISO(monday);
     const rowIdx = (dow - 1) * 2 + (session === 'evening' ? 1 : 0);
 
     const ref = doc(db, 'users', uid, 'weeks', weekStart);
