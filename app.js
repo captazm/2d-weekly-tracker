@@ -160,7 +160,9 @@ async function initFirebase() {
     // Initialize Firestore with offline persistence (IndexedDB cache)
     try {
       db = initializeFirestore(app, {
-        localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
+        localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
+        // VPN/proxy networks often block WebChannel streaming — auto-fallback to long-polling
+        experimentalAutoDetectLongPolling: true,
       });
     } catch (e) {
       console.warn('Persistent cache init failed, falling back to default:', e);

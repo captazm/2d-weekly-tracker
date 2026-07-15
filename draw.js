@@ -219,9 +219,20 @@ export async function renderDrawList() {
   const el = document.getElementById('drawsView');
   if (!db || !uid) return needCloud(el);
   el.innerHTML = `<div class="card" style="text-align:center;color:#9ca3af;">Loading...</div>`;
-  await ensureLoaded();
 
-  const snap = await getDocs(query(collection(db, 'users', uid, 'draws'), orderBy('date', 'desc')));
+  let snap;
+  try {
+    await ensureLoaded();
+    snap = await getDocs(query(collection(db, 'users', uid, 'draws'), orderBy('date', 'desc')));
+  } catch (e) {
+    console.error('renderDrawList', e);
+    el.innerHTML = `<div class="card" style="text-align:center;padding:24px;">
+      <p style="color:#dc2626;font-weight:700;margin-bottom:6px;">⚠️ Data ဆွဲလို့မရပါ</p>
+      <p style="color:#6b7280;font-size:12.5px;line-height:1.7;margin-bottom:12px;">Internet / VPN ကို စစ်ပါ။<br>VPN သုံးနေရင် ခဏပိတ်ပြီး ပြန်စမ်းကြည့်ပါ။</p>
+      <button onclick="switchView('draws')" style="padding:10px 24px;background:linear-gradient(135deg,var(--primary),var(--primary-dark));color:white;border:none;border-radius:10px;font-weight:700;font-family:inherit;cursor:pointer;">🔄 ပြန်ကြိုးစား</button>
+    </div>`;
+    return;
+  }
   drawsCache = [];
   snap.forEach(d => drawsCache.push(d.data()));
   drawsCache.sort((a, b) => b.date.localeCompare(a.date) || (b.session === 'evening' ? 1 : -1));
