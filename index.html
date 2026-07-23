@@ -301,11 +301,11 @@
       </label>
     </div>
     <textarea id="shareText" rows="7" style="width:100%;border:1.5px solid var(--border);border-radius:12px;padding:12px;font-family:monospace;font-size:14px;resize:vertical;"></textarea>
-    <div id="shareResult"></div>
-    <button onclick="submitShare()" id="shareSubmitBtn"
-      style="width:100%;margin-top:10px;padding:14px;background:linear-gradient(135deg,var(--primary),var(--primary-dark));color:white;border:none;border-radius:12px;font-size:15px;font-weight:800;font-family:inherit;cursor:pointer;">
-      ✓ ဒီ Draw ထဲ ထည့်မည်
+    <button onclick="previewShare()" id="shareSubmitBtn"
+      style="width:100%;margin-top:10px;padding:14px;background:linear-gradient(135deg,#3b82f6,#2563eb);color:white;border:none;border-radius:12px;font-size:15px;font-weight:800;font-family:inherit;cursor:pointer;">
+      🔍 စစ်ဆေးမည် (Preview)
     </button>
+    <div id="shareResult"></div>
   </div>
 </div>
 
@@ -715,7 +715,7 @@
 </nav>
 
 <link rel="manifest" href="manifest.json">
-<link rel="stylesheet" href="styles.css?v=28">
+<link rel="stylesheet" href="styles.css?v=29">
 
 <!-- PWA: Install banner & Update banner & Offline indicator -->
 <div id="pwaInstallBanner" class="pwa-banner install-banner" style="display:none;">
@@ -733,8 +733,8 @@
   <span>📴 Offline — Cached data ပြနေ</span>
 </div>
 
-<script type="module" src="firebase-config.js?v=28"></script>
-<script type="module" src="app.js?v=28"></script>
+<script type="module" src="firebase-config.js?v=29"></script>
+<script type="module" src="app.js?v=29"></script>
 
 <script>
   // ========== PWA Service Worker ==========

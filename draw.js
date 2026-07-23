@@ -55,17 +55,70 @@ window.closeShareSheet = function() {
   }
 };
 
-window.submitShare = async function() {
+let sharePreview = null; // { entries, report, agentId, date, session }
+
+// Step 1: Parse & show preview (does NOT save)
+window.previewShare = function() {
   const agentId = document.getElementById('shareAgent').value;
   if (!agentId) { alert('ထိုးသား ရွေးပါ (Settings မှာ ထည့်လို့ရတယ်)'); return; }
-  const agent = agents.find(a => a.id === agentId);
   const date = document.getElementById('shareDate').value;
   const session = document.getElementById('shareSession').value;
   const text = document.getElementById('shareText').value;
-  const entries = parseBetInput(text);
-  if (entries.length === 0) { alert('Format မမှန်ပါ — message ကို ပြန်စစ်ပါ'); return; }
+  const { entries, report } = parseDealerMessage(text);
 
-  // open/create draw
+  // aggregate per number for a clean summary
+  const perNum = {};
+  entries.forEach(e => perNum[e.number] = (perNum[e.number] || 0) + e.amount);
+  const totalStake = entries.reduce((s, e) => s + e.amount, 0);
+  const okLines = report.filter(r => r.ok).length;
+  const badLines = report.filter(r => !r.ok);
+
+  sharePreview = { entries, agentId, date, session };
+
+  const el = document.getElementById('shareResult');
+  if (entries.length === 0) {
+    el.innerHTML = `<div style="margin-top:12px;background:#fee2e2;color:#991b1b;border-radius:10px;padding:12px;font-weight:700;font-size:13px;">⚠️ ဘာမှ မဖတ်နိုင်ပါ — Format ပြန်စစ်ပါ</div>`;
+    return;
+  }
+
+  let html = `<div style="margin-top:12px;">`;
+  // line-by-line understanding
+  html += `<div style="font-size:11px;color:#6b7280;font-weight:700;margin-bottom:6px;">📖 App နားလည်ထားတာ:</div>`;
+  html += report.map(r => `
+    <div style="display:flex;gap:8px;padding:6px 10px;border-radius:8px;margin-bottom:3px;background:${r.ok ? '#f0fdf4' : '#fef3c7'};font-size:12px;">
+      <span>${r.ok ? '✅' : '⚠️'}</span>
+      <div style="flex:1;"><div style="font-family:monospace;color:#6b7280;">${r.raw.slice(0, 46)}</div><div style="font-weight:700;color:${r.ok ? '#166534' : '#92400e'};">${r.note}</div></div>
+    </div>`).join('');
+
+  // number grid
+  const sorted = Object.keys(perNum).sort();
+  html += `<div style="font-size:11px;color:#6b7280;font-weight:700;margin:10px 0 6px;">🔢 ကွက်များ (${sorted.length}):</div>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:4px;max-height:200px;overflow-y:auto;">
+    ${sorted.map(n => {
+      const blocked = (settings.blocked || []).includes(n);
+      return `<div style="background:${blocked ? '#fee2e2' : '#f9fafb'};border-radius:6px;padding:5px 4px;text-align:center;">
+        <div style="font-family:monospace;font-weight:800;font-size:13px;${blocked ? 'color:#dc2626;text-decoration:line-through;' : ''}">${n}</div>
+        <div style="font-size:10px;color:#1e40af;">${fmt(perNum[n])}</div>
+      </div>`;
+    }).join('')}
+    </div>`;
+
+  // total
+  html += `<div style="display:flex;justify-content:space-between;margin-top:10px;padding:10px 12px;background:#ecfdf5;border-radius:10px;border:1.5px solid #86efac;font-weight:800;">
+    <span>စုစုပေါင်း (${entries.length} ကွက်)</span><span style="color:#166534;">${fmt(totalStake)}</span></div>`;
+
+  html += `<button onclick="confirmShare()" style="width:100%;margin-top:10px;padding:14px;background:linear-gradient(135deg,var(--primary),var(--primary-dark));color:white;border:none;border-radius:12px;font-size:15px;font-weight:800;font-family:inherit;cursor:pointer;">✓ မှန်ပါတယ် — Draw ထဲ ထည့်မည်</button>`;
+  html += `<p style="text-align:center;font-size:11px;color:#9ca3af;margin-top:6px;">မှားရင် အပေါ်က စာကို ပြင်ပြီး 🔍 ပြန်စစ်ပါ</p>`;
+  html += `</div>`;
+  el.innerHTML = html;
+};
+
+// Step 2: Commit the previewed entries
+window.confirmShare = async function() {
+  if (!sharePreview || !sharePreview.entries.length) { alert('အရင် 🔍 စစ်ဆေးပါ'); return; }
+  const { entries, agentId, date, session } = sharePreview;
+  const agent = agents.find(a => a.id === agentId);
+
   const id = `${date}_${session}`;
   const ref = doc(db, 'users', uid, 'draws', id);
   const snap = await getDoc(ref);
@@ -77,7 +130,8 @@ window.submitShare = async function() {
   const accepted = {};
   draw.bets.forEach(b => accepted[b.number] = (accepted[b.number] || 0) + b.amount);
 
-  const results = [], blockedSkipped = [];
+  const blockedSkipped = [];
+  let addedCount = 0, kaCount = 0;
   for (const e of entries) {
     if ((settings.blocked || []).includes(e.number)) { blockedSkipped.push(e.number); continue; }
     const limit = (settings.limits || {})[e.number] ?? settings.defaultLimit;
@@ -88,24 +142,22 @@ window.submitShare = async function() {
     if (acc > 0) {
       draw.bets.push({ id: genId(), agentId, agentName: agent.name, number: e.number, amount: acc, ts: Date.now() });
       accepted[e.number] = cur + acc;
+      addedCount++;
     }
-    if (over > 0) draw.forwards.push({ id: genId(), number: e.number, amount: over, status: 'pending' });
-    results.push({ number: e.number, acc, over });
+    if (over > 0) { draw.forwards.push({ id: genId(), number: e.number, amount: over, status: 'pending' }); kaCount++; }
   }
 
   draw.updatedAt = new Date().toISOString();
   await setDoc(ref, draw);
-
-  let html = `<div style="margin-top:12px;font-size:13px;max-height:220px;overflow-y:auto;">
-    <div style="font-weight:700;color:var(--primary-dark);margin-bottom:6px;">✓ ${results.length} ကွက် ထည့်ပြီး (${agent.name} — ${date} ${session === 'morning' ? 'မနက်' : 'ည'})</div>`;
-  if (blockedSkipped.length) html += `<div style="background:#fee2e2;color:#991b1b;border-radius:10px;padding:10px;margin-bottom:8px;font-weight:700;">🚫 ပိတ်ဂဏန်း: ${uniq(blockedSkipped).join(', ')}</div>`;
-  html += results.map(r => `<div style="display:flex;justify-content:space-between;padding:6px 10px;border-radius:8px;margin-bottom:3px;background:${r.over > 0 ? '#fef3c7' : '#f0fdf4'};"><b style="font-family:monospace;">${r.number}</b><span>လက်ခံ ${fmt(r.acc)}${r.over > 0 ? ` <b style="color:#d97706;">| ကာ ${fmt(r.over)}</b>` : ''}</span></div>`).join('');
-  html += '</div>';
-  document.getElementById('shareResult').innerHTML = html;
-  document.getElementById('shareText').value = '';
-
-  // refresh draw list cache if visible
   drawsCache = [];
+
+  let msg = `✓ ${addedCount} ကွက် ထည့်ပြီး (${agent.name} — ${date} ${session === 'morning' ? 'မနက်' : 'ည'})`;
+  if (kaCount) msg += `\n🔄 ${kaCount} ကွက် ကာထဲ ဝင်သွားပြီ`;
+  if (blockedSkipped.length) msg += `\n🚫 ပိတ်ဂဏန်း ${uniq(blockedSkipped).length} ခု ပယ်ပြီး`;
+  alert(msg);
+  document.getElementById('shareResult').innerHTML = `<div style="margin-top:12px;text-align:center;padding:16px;background:#ecfdf5;border-radius:12px;color:#166534;font-weight:800;">✅ ${addedCount} ကွက် အောင်မြင်စွာ ထည့်ပြီး</div>`;
+  document.getElementById('shareText').value = '';
+  sharePreview = null;
 };
 
 function needCloud(el) {
@@ -211,6 +263,127 @@ function normalizeDigits(text) {
 }
 
 // =====================================================
+// DEALER MESSAGE PARSER (Viber/Telegram formats) — with per-line report
+// =====================================================
+const DOUBLES = expandDoubles();
+const revNum = (n) => n[1] + n[0];
+const revSet = (arr) => arr.map(revNum);
+
+// keyword table — longer/specific first
+const DEALER_KW = [
+  { re: 'ခွေပူး',            label: 'ခွေပူး', operand: true, fn: (d) => expandKhwe(d, true) },
+  { re: 'ခွေ',              label: 'ခွေ',   operand: true, fn: (d, dbl) => expandKhwe(d, dbl) },
+  { re: 'ထိပ်ပိတ်',          label: 'ထိပ်ပိတ်', operand: true, fn: (d) => uniq(expandHead(d).concat(expandTail(d))) },
+  { re: 'ထိပ်',            label: 'ထိပ်',  operand: true, head: true, fn: (d) => expandHead(d) },
+  { re: 'နောက်',           label: 'နောက်', operand: true, tail: true, fn: (d) => expandTail(d) },
+  { re: 'ပိတ်',            label: 'ပိတ်',  operand: true, tail: true, fn: (d) => expandTail(d) },
+  { re: 'ဘရိတ်|ဘရိတ|bk|BK|Bk', label: 'ဘရိတ်', operand: true, fn: (d) => expandBrake(d) },
+  { re: 'ပတ်|ပါ',          label: 'ပတ်',   operand: true, fn: (d, dbl) => expandPat(d, dbl) },
+  { re: 'ပါဝါ',            label: 'ပါဝါ',  operand: false, fn: () => POWER },
+  { re: 'နက္ခတ်|နခတ်',      label: 'နက္ခတ်', operand: false, fn: () => NAKHAT },
+  { re: 'အပူး|ပူးစုံ|စုံပူး', label: 'အပူး',  operand: false, fn: () => DOUBLES },
+  { re: 'စုံစုံ|ဆုံဆုံ',      label: 'စုံစုံ', operand: false, fn: () => expandPairs(i => i % 2 === 0, j => j % 2 === 0) },
+  { re: 'မမ',              label: 'မမ',   operand: false, fn: () => expandPairs(i => i % 2 === 1, j => j % 2 === 1) },
+  { re: 'စုံမ|ဆုံမ',        label: 'စုံမ',  operand: false, fn: () => expandPairs(i => i % 2 === 0, j => j % 2 === 1) },
+  { re: 'မစုံ|မဆုံ',        label: 'မစုံ',  operand: false, fn: () => expandPairs(i => i % 2 === 1, j => j % 2 === 0) },
+  { re: 'ညီကို',           label: 'ညီကို', operand: false, fn: () => BROTHER },
+  { re: 'ကိုညီ',           label: 'ကိုညီ', operand: false, fn: () => ELDER },
+];
+
+function detectR(s) {
+  return /(?:\d\s*|[\s=*.\/#-])[rR](?![A-Za-z])/.test(s);
+}
+function pickAmount(s, exclude) {
+  const ms = (s.match(/\d{3,}/g) || []);
+  for (const m of ms) if (!exclude.includes(m)) return parseInt(m);
+  return null;
+}
+
+// Parse ONE segment → { entries, note, ok, count }
+function parseSegment(seg) {
+  const s = seg;
+  const hasR = detectR(s);
+  const wantDoubles = /အပူး/.test(s);
+
+  // 1) CROSS: <digits>..ထိပ်..<digits>..(နောက်|ပိတ်)  (both groups 2+ digits)
+  const cross = s.match(/(\d{2,})[\/.*\s]*ထိပ်[\/.*\s]*(\d{2,})[\/.*\s]*(?:နောက်|ပိတ်)/u);
+  if (cross) {
+    const headDs = uniq(cross[1].split(''));
+    const tailDs = uniq(cross[2].split(''));
+    let nums = [];
+    for (const h of headDs) for (const t of tailDs) nums.push(h + t);
+    nums = uniq(nums);
+    if (hasR) nums = uniq(nums.concat(revSet(nums)));
+    const amt = pickAmount(s, [cross[1], cross[2]]);
+    if (amt == null) return { entries: [], note: '⚠️ ပမာဏ မတွေ့', ok: false, count: nums.length };
+    return { entries: nums.map(n => ({ number: n, amount: amt })), note: `ရှေ့${cross[1]} × နောက်${cross[2]}${hasR ? ' +R' : ''} @${amt.toLocaleString()}`, ok: true, count: nums.length };
+  }
+
+  // 2) KEYWORD
+  for (const kw of DEALER_KW) {
+    const kre = new RegExp('(?:(\\d+)\\s*=?\\s*)?(?:' + kw.re + ')', 'u');
+    const m = s.match(kre);
+    if (!m) continue;
+    const digits = m[1] || '';
+    if (kw.operand && !digits.replace(/[^0-9]/g, '')) continue;
+    let base = kw.fn(digits, wantDoubles);
+    const after = s.slice(m.index + m[0].length);
+    const afterAmts = (after.match(/\d{3,}/g) || []).map(Number);
+    const primary = afterAmts[0] ?? pickAmount(s, [digits]);
+    if (primary == null) return { entries: [], note: '⚠️ ပမာဏ မတွေ့', ok: false, count: base.length };
+
+    // dual amount: keyword @A then R @B (head/tail only)
+    if (hasR && afterAmts[1] != null && (kw.head || kw.tail)) {
+      const entries = [];
+      uniq(base).forEach(n => entries.push({ number: n, amount: primary }));
+      const rev = kw.head ? expandTail(digits) : expandHead(digits);
+      uniq(rev).forEach(n => entries.push({ number: n, amount: afterAmts[1] }));
+      return { entries, note: `${digits}${kw.label} @${primary.toLocaleString()} + ပြန် @${afterAmts[1].toLocaleString()}`, ok: true, count: entries.length };
+    }
+
+    if (hasR && !wantDoubles) base = uniq(base.concat(revSet(base)));
+    else if (!wantDoubles) base = uniq(base);
+    return { entries: base.map(n => ({ number: n, amount: primary })), note: `${digits}${kw.label}${hasR ? ' +R' : ''} @${primary.toLocaleString()} (${base.length})`, ok: true, count: base.length };
+  }
+
+  // 3) PLAIN LIST (2-digit numbers, any separator)
+  let nums = uniq((s.match(/(?<!\d)\d{2}(?!\d)/g) || []));
+  if (nums.length) {
+    if (hasR) nums = uniq(nums.concat(revSet(nums)));
+    const amt = pickAmount(s, []);
+    if (amt == null) return { entries: [], note: `⚠️ ပမာဏ မတွေ့ (${nums.length} ကွက်)`, ok: false, count: nums.length };
+    return { entries: nums.map(n => ({ number: n, amount: amt })), note: `${nums.length} ကွက်${hasR ? ' +R' : ''} @${amt.toLocaleString()}`, ok: true, count: nums.length };
+  }
+  return { entries: [], note: '⚠️ နားမလည်ပါ', ok: false, count: 0 };
+}
+
+// Full message → { entries, report }
+function parseDealerMessage(text) {
+  const norm = normalizeDigits(text);
+  const rawLines = norm.split(/\n/).map(l => l.trim()).filter(Boolean);
+  // merge pure-number continuation lines into the following line that has an amount
+  const segs = [];
+  let buf = '';
+  const hasAmt = (l) => /\d{3,}/.test(l);
+  const pureList = (l) => /^[\d\s.,\/*=#\-]+$/.test(l);
+  for (const l of rawLines) {
+    if (buf) { buf += ' ' + l; if (hasAmt(l)) { segs.push(buf); buf = ''; } continue; }
+    if (pureList(l) && !hasAmt(l)) buf = l;
+    else segs.push(l);
+  }
+  if (buf) segs.push(buf);
+
+  const entries = [], report = [];
+  for (const seg of segs) {
+    const r = parseSegment(seg);
+    report.push({ raw: seg, note: r.note, ok: r.ok, count: r.count });
+    entries.push(...r.entries);
+  }
+  return { entries, report };
+}
+
+
+// =====================================================
 // BET INPUT PARSER
 // Supports:
 //   12.34.56d 5000 | 12.34r 1000 | 12 5000 | 11=3000
@@ -219,94 +392,7 @@ function normalizeDigits(text) {
 //   1.2.3 bk 100 | 1 2 3 4 ဘရိတ် 100 | 3ထိပ်500 | 12.34ပတ်500
 // =====================================================
 function parseBetInput(text) {
-  const entries = [];
-  const normalized = normalizeDigits(text).replace(/=/g, ' ');
-  const parts = normalized.split(/[,\n]+/).map(s => s.trim()).filter(Boolean);
-
-  for (const part of parts) {
-    // --- 1. Slash format: 10/30/90/r500 or 10/30/90/500
-    if (part.includes('/')) {
-      const tokens = part.split('/').map(t => t.trim()).filter(Boolean);
-      const last = tokens[tokens.length - 1];
-      const m = last.match(/^([rRဒါ]?)(\d+)$/);
-      if (m && tokens.length >= 2) {
-        const rev = m[1].toLowerCase() === 'r';
-        const amount = parseInt(m[2]);
-        const nums = tokens.slice(0, -1).filter(t => /^\d{2}$/.test(t));
-        if (nums.length > 0 && amount > 0) {
-          for (const n of nums) {
-            entries.push({ number: n, amount });
-            if (rev && n[0] !== n[1]) entries.push({ number: n[1] + n[0], amount });
-          }
-          continue;
-        }
-      }
-    }
-
-    // --- 2. ပတ် word (reverse) after numbers: 12.34ပတ်500 or 12.34 ပတ် 500
-    let m = part.match(/^([\d.\s]+?)\s*(?:အပြန်)\s*(\d+)$/);
-    if (m) {
-      const nums = m[1].split(/[.\s]+/).filter(n => /^\d{2}$/.test(n));
-      const amount = parseInt(m[2]);
-      if (nums.length && amount > 0) {
-        for (const n of nums) {
-          entries.push({ number: n, amount });
-          if (n[0] !== n[1]) entries.push({ number: n[1] + n[0], amount });
-        }
-        continue;
-      }
-    }
-
-    // --- 3. Burmese word patterns: [digits]WORD[amount]
-    let matched = false;
-    for (const wp of WORD_PATTERNS) {
-      const wre = new RegExp(`^([\\d.\\s]*?)\\s*(?:${wp.re.source})\\s*(\\d+)$`, 'u');
-      const wm = part.match(wre);
-      if (wm) {
-        const digits = wm[1] || '';
-        const amount = parseInt(wm[wm.length - 1]);
-        if (!amount) break;
-        if (wp.needDigits && !digits.replace(/[^0-9]/g, '')) break;
-        const nums = wp.fn(digits);
-        if (nums.length > 0) {
-          nums.forEach(n => entries.push({ number: n, amount }));
-          matched = true;
-        }
-        break;
-      }
-    }
-    if (matched) continue;
-
-    // --- 4. Standard dot format: 12.34.56d 5000 | 12.34r 1000 | 12 5000
-    m = part.match(/^([\d.\s]+?)\s*([drDR])?\s+(\d+)$/);
-    if (m) {
-      const nums = m[1].split(/[.\s]+/).filter(n => /^\d{2}$/.test(n));
-      const type = (m[2] || 'd').toLowerCase();
-      const amount = parseInt(m[3]);
-      if (nums.length && amount > 0) {
-        for (const n of nums) {
-          entries.push({ number: n, amount });
-          if (type === 'r' && n[0] !== n[1]) entries.push({ number: n[1] + n[0], amount });
-        }
-        continue;
-      }
-    }
-
-    // --- 5. Attached d/r: 12.34.56d5000 | 78r1000
-    m = part.match(/^([\d.]+?)([drDR])(\d{2,})$/);
-    if (m) {
-      const nums = m[1].split('.').filter(n => /^\d{2}$/.test(n));
-      const type = m[2].toLowerCase();
-      const amount = parseInt(m[3]);
-      if (nums.length && amount > 0) {
-        for (const n of nums) {
-          entries.push({ number: n, amount });
-          if (type === 'r' && n[0] !== n[1]) entries.push({ number: n[1] + n[0], amount });
-        }
-      }
-    }
-  }
-  return entries;
+  return parseDealerMessage(text).entries;
 }
 
 // =====================================================
