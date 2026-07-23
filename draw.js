@@ -63,13 +63,26 @@ function expandKhwe(digits, withDoubles) {
   return uniq(out);
 }
 function expandBrake(digits) {
+  // ဘရိတ် = digit-sum family: 4ဘရိတ် → 04,13,22,31,40,59,68,77,86,95
+  const ds = uniq(digits.replace(/[^0-9]/g, '').split('').map(Number));
+  const out = [];
+  for (const t of ds)
+    for (let a = 0; a < 10; a++)
+      for (let b = 0; b < 10; b++)
+        if ((a + b) % 10 === t) out.push(String(a) + String(b));
+  return uniq(out);
+}
+function expandPat(digits, doubleTwice) {
+  // ပတ်/ပါ = contains digit: 1ပတ် → 19 ကွက် (11 once); ပတ်အပူး → 11 twice (20)
   const ds = uniq(digits.replace(/[^0-9]/g, '').split(''));
   const out = [];
   for (const d of ds) for (let i = 0; i < 10; i++) {
     out.push(d + String(i));
     out.push(String(i) + d);
   }
-  return uniq(out);
+  let res = uniq(out);
+  if (doubleTwice) ds.forEach(d => res = res.concat(d + d));
+  return res;
 }
 function expandHead(digits) {
   const ds = uniq(digits.replace(/[^0-9]/g, '').split(''));
@@ -98,6 +111,8 @@ const WORD_PATTERNS = [
   { re: /ထိပ်/, fn: (d) => expandHead(d), needDigits: true },
   { re: /(ပိတ်|နောက်ပိတ်)/, fn: (d) => expandTail(d), needDigits: true },
   { re: /ပါဝါ/, fn: () => POWER },
+  { re: /(ပတ်အပူး|ပါအပူး)/, fn: (d) => expandPat(d, true), needDigits: true },
+  { re: /(ပတ်|ပါ)/, fn: (d) => expandPat(d, false), needDigits: true },
   { re: /(နက္ခတ်|နခတ်)/, fn: () => NAKHAT },
   { re: /(စုံစုံ|ဆုံဆုံ)/, fn: () => expandPairs(i => i % 2 === 0, j => j % 2 === 0) },
   { re: /(မမ)/, fn: () => expandPairs(i => i % 2 === 1, j => j % 2 === 1) },
@@ -147,7 +162,7 @@ function parseBetInput(text) {
     }
 
     // --- 2. ပတ် word (reverse) after numbers: 12.34ပတ်500 or 12.34 ပတ် 500
-    let m = part.match(/^([\d.\s]+?)\s*(?:ပတ်|အပြန်)\s*(\d+)$/);
+    let m = part.match(/^([\d.\s]+?)\s*(?:အပြန်)\s*(\d+)$/);
     if (m) {
       const nums = m[1].split(/[.\s]+/).filter(n => /^\d{2}$/.test(n));
       const amount = parseInt(m[2]);
@@ -492,6 +507,7 @@ const SHORTCUT_BTNS = [
   { label: 'ထိပ်', insert: 'ထိပ်', prefix: true },
   { label: 'ပိတ်', insert: 'ပိတ်', prefix: true },
   { label: 'ဘရိတ်', insert: 'ဘရိတ်', prefix: true },
+  { label: 'ပတ်', insert: 'ပတ်', prefix: true },
 ];
 
 function renderBetEntry(el) {
