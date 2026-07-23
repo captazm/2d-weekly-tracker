@@ -279,6 +279,36 @@
   </div>
 </div>
 
+<!-- Share receiver (Viber/Telegram message → bet entry) -->
+<div id="shareSheet" class="ka-overlay" style="display:none;" onclick="if(event.target===this)closeShareSheet()">
+  <div class="ka-card">
+    <div class="ka-head">
+      <b>📥 Message ရလာပါပြီ</b>
+      <button onclick="closeShareSheet()" class="numpad-close">✕</button>
+    </div>
+    <div style="display:grid;gap:8px;margin-bottom:10px;">
+      <label style="font-size:11px;color:#6b7280;font-weight:700;">ရက်စွဲ / ပွဲ
+        <div style="display:flex;gap:6px;margin-top:4px;">
+          <input type="date" id="shareDate" style="flex:1;border:1.5px solid var(--border);border-radius:10px;padding:9px;font-family:inherit;font-weight:600;">
+          <select id="shareSession" style="border:1.5px solid var(--border);border-radius:10px;padding:9px;font-family:inherit;font-weight:600;">
+            <option value="morning">မနက်</option>
+            <option value="evening">ည</option>
+          </select>
+        </div>
+      </label>
+      <label style="font-size:11px;color:#6b7280;font-weight:700;">ထိုးသား
+        <select id="shareAgent" style="width:100%;border:1.5px solid var(--border);border-radius:10px;padding:9px;font-family:inherit;font-weight:600;margin-top:4px;"></select>
+      </label>
+    </div>
+    <textarea id="shareText" rows="7" style="width:100%;border:1.5px solid var(--border);border-radius:12px;padding:12px;font-family:monospace;font-size:14px;resize:vertical;"></textarea>
+    <div id="shareResult"></div>
+    <button onclick="submitShare()" id="shareSubmitBtn"
+      style="width:100%;margin-top:10px;padding:14px;background:linear-gradient(135deg,var(--primary),var(--primary-dark));color:white;border:none;border-radius:12px;font-size:15px;font-weight:800;font-family:inherit;cursor:pointer;">
+      ✓ ဒီ Draw ထဲ ထည့်မည်
+    </button>
+  </div>
+</div>
+
 <!-- Manual (Burmese user guide) -->
 <div id="manualSheet" class="manual-sheet" style="display:none;">
   <div class="manual-head">
@@ -403,6 +433,14 @@
       </ul>
       <p class="m-note">⚠️ <b>Limit စနစ်</b> — နံပါတ်တစ်လုံးရဲ့ စုစုပေါင်း လက်ခံငွေက limit ပြည့်သွားရင် ကျော်တဲ့ပမာဏကို <b>ကာ tab</b> ထဲ အလိုအလျောက် ထည့်ပေးမယ်။ <b>ပိတ်ဂဏန်း</b> ဆို လုံးဝလက်မခံပဲ 🚫 alert ပြမယ်။<br><br>
       🚫 ထည့် tab အပေါ်က <b>အနီရောင် ဝိုင်းလေးတွေ</b> = ပိတ်ဂဏန်းများ။ ဘေးက Add နဲ့ အသစ်ထည့်၊ ဝိုင်းကိုနှိပ်ရင် ပြန်ဖွင့်လို့ရ။</p>
+
+      <p style="margin-top:10px;"><b>📲 Viber ကနေ တိုက်ရိုက် Share</b> (ပြန်ရိုက်စရာမလို!)</p>
+      <ol>
+        <li>ဒိုင်ပို့တဲ့ Viber/Telegram message ကို <b>ကြာကြာဖိ</b> → <b>Share / မျှဝေမည်</b></li>
+        <li>App စာရင်းထဲက <b>Luck Max</b> ရွေး</li>
+        <li>ရက်စွဲ + ပွဲ + ထိုးသား ရွေးပြီး <b>✓ ဒီ Draw ထဲ ထည့်မည်</b></li>
+      </ol>
+      <p class="m-note">💡 ဒီfeature သုံးဖို့ App ကို <b>Home Screen မှာ Install</b> လုပ်ထားရမယ် (Chrome → ⋮ → Install app)။ Share sheet ထဲ Luck Max ပေါ်လာမယ်။ (Android မှာ အလုပ်လုပ်တယ်၊ iPhone မှာ ကန့်သတ်ချက်ရှိ)</p>
     </div>
 
     <div class="m-card">
@@ -677,7 +715,7 @@
 </nav>
 
 <link rel="manifest" href="manifest.json">
-<link rel="stylesheet" href="styles.css?v=27">
+<link rel="stylesheet" href="styles.css?v=28">
 
 <!-- PWA: Install banner & Update banner & Offline indicator -->
 <div id="pwaInstallBanner" class="pwa-banner install-banner" style="display:none;">
@@ -695,8 +733,8 @@
   <span>📴 Offline — Cached data ပြနေ</span>
 </div>
 
-<script type="module" src="firebase-config.js?v=27"></script>
-<script type="module" src="app.js?v=27"></script>
+<script type="module" src="firebase-config.js?v=28"></script>
+<script type="module" src="app.js?v=28"></script>
 
 <script>
   // ========== PWA Service Worker ==========

@@ -10,7 +10,7 @@ import {
   initializeFirestore, persistentLocalCache, persistentMultipleTabManager
 } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js";
 import { firebaseConfig, FIREBASE_ENABLED } from "./firebase-config.js";
-import { initLottery, renderDrawList, renderLotSettings } from "./draw.js";
+import { initLottery, renderDrawList, renderLotSettings, openShareSheet } from "./draw.js";
 
 const SESSIONS = [
   { day: 1, dayName: 'တနင်္လာ', session: 'morning', label: 'မနက်' },
@@ -301,6 +301,13 @@ function showApp() {
   // Init 2D dealer module (Firestore-backed; disabled in local mode)
   const isLocal = currentUser.uid.startsWith('local');
   initLottery(isLocal ? null : db, isLocal ? null : currentUser.uid);
+
+  // Handle shared message (Web Share Target: Viber/Telegram → app)
+  const params = new URLSearchParams(location.search);
+  const shared = params.get('text') || params.get('url') || '';
+  if (shared.trim() && !isLocal) {
+    setTimeout(() => openShareSheet(shared), 600);
+  }
 }
 
 window.signOut = async () => {

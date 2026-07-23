@@ -26,6 +26,88 @@ export function initLottery(database, userId) {
   loaded = false;
 }
 
+// ===== Share receiver (Viber/Telegram message → bet entry) =====
+export async function openShareSheet(text) {
+  const sheet = document.getElementById('shareSheet');
+  if (!db || !uid) {
+    alert('Cloud login လိုပါတယ် — Email နဲ့ ဝင်ပြီးမှ share လုပ်ပါ');
+    return;
+  }
+  await ensureLoaded();
+
+  document.getElementById('shareText').value = text || '';
+  document.getElementById('shareDate').value = localISO(new Date());
+  document.getElementById('shareResult').innerHTML = '';
+
+  const agentSel = document.getElementById('shareAgent');
+  agentSel.innerHTML = agents.length === 0
+    ? '<option value="">— ထိုးသား မရှိ (Settings မှာထည့်ပါ) —</option>'
+    : agents.map(a => `<option value="${a.id}">${a.name}${a.comm ? ' /' + a.comm + '%' : ''}</option>`).join('');
+
+  sheet.style.display = 'flex';
+}
+
+window.closeShareSheet = function() {
+  document.getElementById('shareSheet').style.display = 'none';
+  // clean the ?text= param so refresh doesn't re-trigger
+  if (location.search.includes('text=') || location.search.includes('share')) {
+    history.replaceState(null, '', location.pathname);
+  }
+};
+
+window.submitShare = async function() {
+  const agentId = document.getElementById('shareAgent').value;
+  if (!agentId) { alert('ထိုးသား ရွေးပါ (Settings မှာ ထည့်လို့ရတယ်)'); return; }
+  const agent = agents.find(a => a.id === agentId);
+  const date = document.getElementById('shareDate').value;
+  const session = document.getElementById('shareSession').value;
+  const text = document.getElementById('shareText').value;
+  const entries = parseBetInput(text);
+  if (entries.length === 0) { alert('Format မမှန်ပါ — message ကို ပြန်စစ်ပါ'); return; }
+
+  // open/create draw
+  const id = `${date}_${session}`;
+  const ref = doc(db, 'users', uid, 'draws', id);
+  const snap = await getDoc(ref);
+  let draw = snap.exists() ? snap.data() : { id, date, session, status: 'open', bets: [], forwards: [], createdAt: new Date().toISOString() };
+  if (!draw.bets) draw.bets = [];
+  if (!draw.forwards) draw.forwards = [];
+  if (draw.status === 'settled') { alert('ဒီ Draw က ရှင်းပြီးသား — ပြင်လို့မရပါ'); return; }
+
+  const accepted = {};
+  draw.bets.forEach(b => accepted[b.number] = (accepted[b.number] || 0) + b.amount);
+
+  const results = [], blockedSkipped = [];
+  for (const e of entries) {
+    if ((settings.blocked || []).includes(e.number)) { blockedSkipped.push(e.number); continue; }
+    const limit = (settings.limits || {})[e.number] ?? settings.defaultLimit;
+    const cur = accepted[e.number] || 0;
+    const remaining = Math.max(0, limit - cur);
+    const acc = Math.min(e.amount, remaining);
+    const over = e.amount - acc;
+    if (acc > 0) {
+      draw.bets.push({ id: genId(), agentId, agentName: agent.name, number: e.number, amount: acc, ts: Date.now() });
+      accepted[e.number] = cur + acc;
+    }
+    if (over > 0) draw.forwards.push({ id: genId(), number: e.number, amount: over, status: 'pending' });
+    results.push({ number: e.number, acc, over });
+  }
+
+  draw.updatedAt = new Date().toISOString();
+  await setDoc(ref, draw);
+
+  let html = `<div style="margin-top:12px;font-size:13px;max-height:220px;overflow-y:auto;">
+    <div style="font-weight:700;color:var(--primary-dark);margin-bottom:6px;">✓ ${results.length} ကွက် ထည့်ပြီး (${agent.name} — ${date} ${session === 'morning' ? 'မနက်' : 'ည'})</div>`;
+  if (blockedSkipped.length) html += `<div style="background:#fee2e2;color:#991b1b;border-radius:10px;padding:10px;margin-bottom:8px;font-weight:700;">🚫 ပိတ်ဂဏန်း: ${uniq(blockedSkipped).join(', ')}</div>`;
+  html += results.map(r => `<div style="display:flex;justify-content:space-between;padding:6px 10px;border-radius:8px;margin-bottom:3px;background:${r.over > 0 ? '#fef3c7' : '#f0fdf4'};"><b style="font-family:monospace;">${r.number}</b><span>လက်ခံ ${fmt(r.acc)}${r.over > 0 ? ` <b style="color:#d97706;">| ကာ ${fmt(r.over)}</b>` : ''}</span></div>`).join('');
+  html += '</div>';
+  document.getElementById('shareResult').innerHTML = html;
+  document.getElementById('shareText').value = '';
+
+  // refresh draw list cache if visible
+  drawsCache = [];
+};
+
 function needCloud(el) {
   el.innerHTML = `<div class="card" style="text-align:center;color:#9ca3af;padding:30px;">
     ☁️ ဒီ feature က Cloud login လိုပါတယ်<br><small>Email နဲ့ ဝင်ထားမှ သုံးလို့ရပါမယ်</small></div>`;
