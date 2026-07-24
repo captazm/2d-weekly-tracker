@@ -1046,7 +1046,7 @@ function renderGrid(el) {
       </div>
       <div style="display:flex;gap:4px;background:#f3f4f6;border-radius:11px;padding:4px;margin-bottom:10px;">
         ${sortBtn('num', '🔢 နံပါတ်စဉ်')}
-        ${sortBtn('amt', '💰 ငွေများစဉ်')}
+        ${sortBtn('amt', '💰 ထိုးငွေ')}
       </div>
       <div style="display:grid;grid-template-columns:repeat(10,1fr);gap:3px;">${cells.join('')}</div>
       <div style="display:flex;gap:10px;justify-content:center;margin-top:10px;font-size:10px;color:#6b7280;flex-wrap:wrap;">
