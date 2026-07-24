@@ -47,6 +47,17 @@ export async function openShareSheet(text) {
   sheet.style.display = 'flex';
 }
 
+// Desktop / manual entry point — read clipboard then open the same preview sheet
+window.pasteToShare = async function() {
+  let text = '';
+  try { text = await navigator.clipboard.readText(); } catch (e) { /* permission denied → open empty */ }
+  await openShareSheet(text);
+  if (!text) {
+    const ta = document.getElementById('shareText');
+    if (ta) { ta.focus(); ta.placeholder = 'ဒီမှာ Ctrl+V (⌘V) နဲ့ paste လုပ်ပါ'; }
+  }
+};
+
 window.closeShareSheet = function() {
   document.getElementById('shareSheet').style.display = 'none';
   // clean the ?text= param so refresh doesn't re-trigger
@@ -456,6 +467,10 @@ function renderDrawsBody() {
         </select>
         <button onclick="lotCreateDraw()" class="nav-btn" style="width:auto;padding:0 16px;font-size:14px;">+ ဖွင့်</button>
       </div>
+      <button onclick="pasteToShare()"
+        style="width:100%;margin-bottom:12px;padding:12px;background:linear-gradient(135deg,#3b82f6,#2563eb);color:white;border:none;border-radius:12px;font-size:14px;font-weight:800;font-family:inherit;cursor:pointer;">
+        📥 Viber Message ကူးထည့်မည်
+      </button>
       ${drawsCache.length === 0 ? '<p style="color:#9ca3af;text-align:center;padding:12px;font-size:13px;">Draw မရှိသေးပါ</p>' :
         drawsCache.map(d => {
           const t = d.totals || {};
@@ -704,7 +719,8 @@ function renderBetEntry(el) {
           style="background:#f3f4f6;border:1px solid #e5e7eb;border-radius:999px;padding:6px 12px;font-size:12px;font-weight:700;font-family:inherit;cursor:pointer;">${s.label}</button>`).join('')}
       </div>
       <div style="display:flex;gap:8px;">
-        <button onclick="lotPasteInput()" style="width:52px;padding:14px 0;background:#f3f4f6;border:1px solid #e5e7eb;border-radius:12px;font-size:16px;cursor:pointer;">📋</button>
+        <button onclick="pasteToShare()" title="Message ကူးထည့် (Preview ပါ)" style="width:52px;padding:14px 0;background:#dbeafe;border:1px solid #bfdbfe;border-radius:12px;font-size:16px;cursor:pointer;">📥</button>
+        <button onclick="lotPasteInput()" title="ဒီ box ထဲ paste" style="width:52px;padding:14px 0;background:#f3f4f6;border:1px solid #e5e7eb;border-radius:12px;font-size:16px;cursor:pointer;">📋</button>
         <button onclick="lotSubmitBets()" ${currentDraw.status==='settled'?'disabled':''}
           style="flex:1;padding:14px;background:linear-gradient(135deg,var(--primary),var(--primary-dark));color:white;border:none;border-radius:12px;font-size:15px;font-weight:800;font-family:inherit;cursor:pointer;${currentDraw.status==='settled'?'opacity:0.5;':''}">
           ${currentDraw.status==='settled' ? '🔒 ရှင်းပြီးသား Draw' : 'ထည့်မည်'}
