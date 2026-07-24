@@ -357,14 +357,32 @@ function parseSegment(seg) {
     return { entries: base.map(n => ({ number: n, amount: primary })), note: `${digits}${kw.label}${hasR ? ' +R' : ''} @${primary.toLocaleString()} (${base.length})`, ok: true, count: base.length };
   }
 
-  // 3) PLAIN LIST (2-digit numbers, any separator)
-  let nums = uniq((s.match(/(?<!\d)\d{2}(?!\d)/g) || []));
-  if (nums.length) {
-    if (hasR) nums = uniq(nums.concat(revSet(nums)));
-    const amt = pickAmount(s, []);
-    if (amt == null) return { entries: [], note: `⚠️ ပမာဏ မတွေ့ (${nums.length} ကွက်)`, ok: false, count: nums.length };
-    return { entries: nums.map(n => ({ number: n, amount: amt })), note: `${nums.length} ကွက်${hasR ? ' +R' : ''} @${amt.toLocaleString()}`, ok: true, count: nums.length };
+  // 3) PLAIN LIST — split into amount-terminated CHUNKS
+  //    (handles: 35=32=...=51d500,49R500,99d1500  →  3 separate groups)
+  const amtRe = /\d{3,}/g;
+  const chunks = [];
+  let mm, last = 0;
+  while ((mm = amtRe.exec(s)) !== null) {
+    chunks.push({ text: s.slice(last, mm.index), amount: parseInt(mm[0]) });
+    last = mm.index + mm[0].length;
   }
+  if (chunks.length) {
+    const entries = [];
+    const notes = [];
+    for (const ch of chunks) {
+      const nums0 = uniq((ch.text.match(/(?<!\d)\d{2}(?!\d)/g) || []));
+      if (!nums0.length) continue;
+      const chR = detectR(ch.text + ' ');
+      const nn = chR ? uniq(nums0.concat(revSet(nums0))) : nums0;
+      nn.forEach(n => entries.push({ number: n, amount: ch.amount }));
+      notes.push(`${nums0.length}ကွက်${chR ? '+R' : ''}@${ch.amount.toLocaleString()}`);
+    }
+    if (entries.length) {
+      return { entries, note: notes.join(' , '), ok: true, count: entries.length };
+    }
+  }
+  const leftover = uniq((s.match(/(?<!\d)\d{2}(?!\d)/g) || []));
+  if (leftover.length) return { entries: [], note: `⚠️ ပမာဏ မတွေ့ (${leftover.length} ကွက်)`, ok: false, count: leftover.length };
   return { entries: [], note: '⚠️ နားမလည်ပါ', ok: false, count: 0 };
 }
 
