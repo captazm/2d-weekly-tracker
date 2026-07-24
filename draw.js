@@ -996,10 +996,17 @@ window.lotCopyAgent = function(agentId) {
 };
 
 // ===== TAB: Grid + ခန့်မှန်း =====
+let gridSort = 'num'; // 'num' | 'amt'
+
+window.lotGridSort = function(mode) {
+  gridSort = mode;
+  renderTab();
+};
+
 function renderGrid(el) {
   const t = drawTotals();
   let maxNum = '—', maxPot = 0;
-  const cells = [];
+  const cellData = [];
   const exposures = [];
   for (let i = 0; i < 100; i++) {
     const num = String(i).padStart(2, '0');
@@ -1015,19 +1022,31 @@ function renderGrid(el) {
     else if (pct >= 0.5 && pct < 0.9) bg = '#fef9c3';
     else if (pct >= 0.9 && net < limit) bg = '#ffedd5';
     else if (net >= limit && limit > 0) bg = '#fecaca';
-    cells.push(`<div style="background:${bg};border-radius:8px;padding:5px 2px;text-align:center;border:1px solid rgba(0,0,0,0.05);">
-      <div style="font-family:monospace;font-weight:800;font-size:13px;">${num}</div>
-      ${net > 0 ? `<div style="font-size:9.5px;color:#1e40af;font-weight:700;">${fmt(net)}</div>` : '<div style="font-size:9.5px;color:#d1d5db;">-</div>'}
-    </div>`);
+    cellData.push({ num, net, bg });
   }
+  if (gridSort === 'amt') {
+    cellData.sort((a, b) => b.net - a.net || a.num.localeCompare(b.num));
+  }
+  const cells = cellData.map(c => `<div style="background:${c.bg};border-radius:8px;padding:5px 2px;text-align:center;border:1px solid rgba(0,0,0,0.05);">
+      <div style="font-family:monospace;font-weight:800;font-size:13px;">${c.num}</div>
+      ${c.net > 0 ? `<div style="font-size:9.5px;color:#1e40af;font-weight:700;">${fmt(c.net)}</div>` : '<div style="font-size:9.5px;color:#d1d5db;">-</div>'}
+    </div>`);
   exposures.sort((a, b) => b.net - a.net);
   const top = exposures.slice(0, 10);
+
+  const sortBtn = (id, label) => `
+    <button onclick="lotGridSort('${id}')" style="flex:1;padding:8px;border:none;border-radius:9px;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;
+      background:${gridSort === id ? 'var(--primary)' : 'transparent'};color:${gridSort === id ? 'white' : '#6b7280'};">${label}</button>`;
 
   el.innerHTML = `
     <div class="card">
       <div style="display:flex;justify-content:space-between;margin-bottom:10px;font-size:13px;">
         <span>⚠️ အန္တရာယ်အကြီးဆုံး: <b style="color:#dc2626;">${maxNum}</b></span>
         <span>လျော်ရနိုင်ဆုံး: <b style="color:#dc2626;">${fmt(maxPot)}</b></span>
+      </div>
+      <div style="display:flex;gap:4px;background:#f3f4f6;border-radius:11px;padding:4px;margin-bottom:10px;">
+        ${sortBtn('num', '🔢 နံပါတ်စဉ်')}
+        ${sortBtn('amt', '💰 ငွေများစဉ်')}
       </div>
       <div style="display:grid;grid-template-columns:repeat(10,1fr);gap:3px;">${cells.join('')}</div>
       <div style="display:flex;gap:10px;justify-content:center;margin-top:10px;font-size:10px;color:#6b7280;flex-wrap:wrap;">
