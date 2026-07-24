@@ -676,10 +676,74 @@ function renderDrawDetail() {
       <div class="stat-pill" style="flex:1;background:linear-gradient(135deg,#d1fae5,#a7f3d0);"><span class="lbl">Net</span><span class="val">${fmt(t.netSales)}</span></div>
     </div>
 
-    <div id="lotTabContent"></div>`;
+    <div class="lot-wrap">
+      <div class="live-board ${liveBoardOpen ? 'open' : ''}" id="lotLiveBoard">
+        <button class="live-board-toggle" onclick="toggleLiveBoard()">
+          📊 Live Board (${t.uniqueNums} ကွက်) <span>${liveBoardOpen ? '▲ ဖျောက်' : '▼ ကြည့်'}</span>
+        </button>
+        <div class="live-board-body">${liveBoardHTML()}</div>
+      </div>
+      <div style="min-width:0;">
+        <div id="lotTabContent"></div>
+      </div>
+    </div>`;
 
   renderTab();
 }
+
+// ===== Live Board — per-number totals sorted desc, agent breakdown =====
+let liveBoardOpen = false;
+
+function liveBoardHTML() {
+  const per = {};
+  currentDraw.bets.forEach(b => {
+    if (!per[b.number]) per[b.number] = { total: 0, agents: {} };
+    per[b.number].total += b.amount;
+    per[b.number].agents[b.agentName] = (per[b.number].agents[b.agentName] || 0) + b.amount;
+  });
+  const rows = Object.entries(per)
+    .map(([num, v]) => ({ num, ...v }))
+    .sort((a, b) => b.total - a.total);
+
+  if (rows.length === 0) {
+    return '<p style="color:#9ca3af;font-size:12px;text-align:center;padding:14px;">ထိုးငွေ မရှိသေးပါ</p>';
+  }
+
+  const grand = rows.reduce((s, r) => s + r.total, 0);
+  let html = `<div class="lb-head-line"><span>စုစုပေါင်း</span><b>${fmt(grand)}</b></div>`;
+
+  html += rows.map((r, i) => {
+    const limit = (settings.limits || {})[r.num] ?? settings.defaultLimit;
+    const pct = limit > 0 ? r.total / limit : 0;
+    let cls = '';
+    if (pct >= 1) cls = 'lb-full';
+    else if (pct >= 0.8) cls = 'lb-warn';
+    const agentsTxt = Object.entries(r.agents)
+      .sort((a, b) => b[1] - a[1])
+      .map(([n, amt]) => `${n} ${fmt(amt)}`)
+      .join(' · ');
+    return `
+    <div class="lb-row ${cls}">
+      <span class="lb-rank">${i + 1}</span>
+      <b class="lb-num">${r.num}</b>
+      <div class="lb-mid">
+        <div class="lb-agents">${agentsTxt}</div>
+      </div>
+      <b class="lb-total">${fmt(r.total)}</b>
+    </div>`;
+  }).join('');
+  return html;
+}
+
+window.toggleLiveBoard = function() {
+  liveBoardOpen = !liveBoardOpen;
+  const board = document.getElementById('lotLiveBoard');
+  if (board) {
+    board.classList.toggle('open', liveBoardOpen);
+    const btn = board.querySelector('.live-board-toggle span');
+    if (btn) btn.textContent = liveBoardOpen ? '▲ ဖျောက်' : '▼ ကြည့်';
+  }
+};
 
 window.lotSwitchTab = function(tab) {
   currentTab = tab;

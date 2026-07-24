@@ -1315,6 +1315,92 @@ tfoot .grand-row td:last-child {
 }
 .m-code b { color: #fbbf24; }
 
+/* ===== Live Board (per-number totals, sorted desc) ===== */
+.lot-wrap { min-width: 0; }
+.live-board {
+  background: white;
+  border-radius: 14px;
+  margin: 10px 12px 0;
+  box-shadow: var(--shadow-sm);
+  border: 1px solid rgba(229, 231, 235, 0.7);
+  overflow: hidden;
+}
+.live-board-toggle {
+  width: 100%;
+  display: flex; justify-content: space-between; align-items: center;
+  background: linear-gradient(135deg, #eef2ff, #e0e7ff);
+  color: #3730a3;
+  border: none;
+  padding: 11px 14px;
+  font-size: 13px; font-weight: 800;
+  font-family: inherit; cursor: pointer;
+}
+.live-board-toggle span { font-size: 11px; font-weight: 700; color: #6366f1; }
+.live-board-body { display: none; padding: 8px 10px 12px; }
+.live-board.open .live-board-body { display: block; }
+
+.lb-head-line {
+  display: flex; justify-content: space-between;
+  padding: 6px 8px 8px;
+  font-size: 12px; color: var(--text-muted); font-weight: 700;
+  border-bottom: 1.5px solid #e5e7eb;
+  margin-bottom: 6px;
+}
+.lb-head-line b { color: #1e40af; font-variant-numeric: tabular-nums; }
+.lb-row {
+  display: flex; align-items: center; gap: 8px;
+  padding: 7px 8px;
+  border-radius: 10px;
+  margin-bottom: 3px;
+  background: #f9fafb;
+}
+.lb-row.lb-warn { background: #ffedd5; }
+.lb-row.lb-full { background: #fecaca; }
+.lb-rank {
+  font-size: 10px; color: #9ca3af; font-weight: 700;
+  width: 18px; text-align: right; flex-shrink: 0;
+}
+.lb-num {
+  font-family: monospace; font-size: 17px; font-weight: 800;
+  color: var(--primary-dark);
+  width: 30px; flex-shrink: 0;
+}
+.lb-mid { flex: 1; min-width: 0; }
+.lb-agents {
+  font-size: 10.5px; color: #6b7280; font-weight: 600;
+  line-height: 1.5;
+  word-break: break-word;
+}
+.lb-total {
+  font-size: 14px; font-weight: 800;
+  color: #1e40af;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+  flex-shrink: 0;
+}
+
+/* Desktop (laptop): board always visible beside the tab content */
+@media (min-width: 900px) {
+  .container { max-width: 1080px; }
+  .lot-wrap {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 380px;
+    gap: 0 4px;
+    align-items: start;
+  }
+  .lot-wrap > .live-board { order: 2; }
+  .lot-wrap > div:not(.live-board) { order: 1; }
+  .live-board {
+    position: sticky;
+    top: 118px;
+    max-height: calc(100vh - 200px);
+    overflow-y: auto;
+  }
+  .live-board-toggle { pointer-events: none; }
+  .live-board-toggle span { display: none; }
+  .live-board .live-board-body { display: block !important; }
+}
+
 /* ===== Bank reconciliation table ===== */
 .bank-head, .bank-row, .bank-total-row {
   display: grid;
