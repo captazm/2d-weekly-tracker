@@ -1,5 +1,5 @@
 // Luck Max Service Worker — PWA v1
-const VERSION = 'v36';
+const VERSION = 'v37';
 const CACHE_NAME = `luckmax-${VERSION}`;
 
 // Files cached at install time (app shell)

@@ -485,10 +485,6 @@ function renderDrawsBody() {
         </select>
         <button onclick="lotCreateDraw()" class="nav-btn" style="width:auto;padding:0 16px;font-size:14px;">+ ဖွင့်</button>
       </div>
-      <button onclick="pasteToShare()"
-        style="width:100%;margin-bottom:12px;padding:12px;background:linear-gradient(135deg,#3b82f6,#2563eb);color:white;border:none;border-radius:12px;font-size:14px;font-weight:800;font-family:inherit;cursor:pointer;">
-        📥 Viber Message ကူးထည့်မည်
-      </button>
       ${drawsCache.length === 0 ? '<p style="color:#9ca3af;text-align:center;padding:12px;font-size:13px;">Draw မရှိသေးပါ</p>' :
         drawsCache.map(d => {
           const t = d.totals || {};
