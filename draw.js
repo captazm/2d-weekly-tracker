@@ -301,8 +301,11 @@ const DEALER_KW = [
   { re: 'ကိုညီ',           label: 'ကိုညီ', operand: false, fn: () => ELDER },
 ];
 
+// Reverse markers: R r @ အာ ပြန်  (# - d ဒဲ့ = are straight)
 function detectR(s) {
-  return /(?:\d\s*|[\s=*.\/#-])[rR](?![A-Za-z])/.test(s);
+  return /(?:\d\s*|[\s=*.\/#-])[rR](?![A-Za-z])/.test(s)  // R / r
+    || /@/.test(s)                                          // @ = ပြောင်းပြန်
+    || /အာ|ပြန်/.test(s);                                   // မြန်မာ reverse စကားလုံး
 }
 function pickAmount(s, exclude) {
   const ms = (s.match(/\d{3,}/g) || []);
