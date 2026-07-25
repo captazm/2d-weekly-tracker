@@ -1001,12 +1001,15 @@ window.lotGridSort = function(mode) {
 
 function renderGrid(el) {
   const t = drawTotals();
+  // Grid shows GROSS bets received per number (ka/forward tracked separately)
+  const gross = {};
+  currentDraw.bets.forEach(b => gross[b.number] = (gross[b.number] || 0) + b.amount);
   let maxNum = '—', maxPot = 0;
   const cellData = [];
   const exposures = [];
   for (let i = 0; i < 100; i++) {
     const num = String(i).padStart(2, '0');
-    const net = Math.max(0, t.perNum[num] || 0);
+    const net = gross[num] || 0;
     const limit = (settings.limits || {})[num] ?? settings.defaultLimit;
     const pot = net * settings.payoutMult;
     if (pot > maxPot) { maxPot = pot; maxNum = num; }
