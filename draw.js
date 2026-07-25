@@ -208,13 +208,13 @@ function expandKhwe(digits, withDoubles) {
   return uniq(out);
 }
 function expandBrake(digits) {
-  // ဘရိတ် = digit-sum family: 4ဘရိတ် → 04,13,22,31,40,59,68,77,86,95
+  // ဘရိတ် = digit-sum EXACTLY equals target: 4ဘရိတ် → 04,13,22,31,40 (sum=14 excluded)
   const ds = uniq(digits.replace(/[^0-9]/g, '').split('').map(Number));
   const out = [];
   for (const t of ds)
     for (let a = 0; a < 10; a++)
       for (let b = 0; b < 10; b++)
-        if ((a + b) % 10 === t) out.push(String(a) + String(b));
+        if (a + b === t) out.push(String(a) + String(b));
   return uniq(out);
 }
 function expandPat(digits, doubleTwice) {
@@ -332,7 +332,7 @@ function parseSegment(seg) {
 
   // 2) KEYWORD
   for (const kw of DEALER_KW) {
-    const kre = new RegExp('(?:(\\d+)\\s*=?\\s*)?(?:' + kw.re + ')', 'u');
+    const kre = new RegExp('(?:([\\d./ ]*\\d)\\s*=?\\s*)?(?:' + kw.re + ')', 'u');
     const m = s.match(kre);
     if (!m) continue;
     const digits = m[1] || '';
