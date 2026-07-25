@@ -1067,25 +1067,67 @@ function renderGrid(el) {
 }
 
 // ===== TAB: ကာ (forwards) =====
+// Pending ka → dealer-friendly text (same-amount numbers grouped: "31.37.39 = 1,000")
+function kaPendingText() {
+  const pending = currentDraw.forwards.filter(f => f.status === 'pending');
+  if (pending.length === 0) return '';
+  const merged = {};
+  pending.forEach(f => merged[f.number] = (merged[f.number] || 0) + f.amount);
+  const byAmt = {};
+  Object.entries(merged).forEach(([n, a]) => {
+    if (!byAmt[a]) byAmt[a] = [];
+    byAmt[a].push(n);
+  });
+  let total = 0;
+  Object.values(merged).forEach(a => total += a);
+  let text = Object.entries(byAmt)
+    .sort((x, y) => Number(y[0]) - Number(x[0]))
+    .map(([amt, nums]) => `${nums.sort().join('.')} = ${Number(amt).toLocaleString()}`)
+    .join('\n');
+  text += `\n----------------------------\nTotal = ${total.toLocaleString()}`;
+  return text;
+}
+
 function renderKa(el) {
   const pending = currentDraw.forwards.filter(f => f.status === 'pending');
   const sent = currentDraw.forwards.filter(f => f.status === 'sent');
+  const pendingTotal = pending.reduce((s, f) => s + f.amount, 0);
+  const preview = kaPendingText();
 
   el.innerHTML = `
     <div class="card">
-      <h3>🔄 ပြန်ကာရန် (${pending.length})</h3>
-      ${pending.length > 0 ? `
-        <div style="display:flex;gap:8px;margin-bottom:10px;">
-          <button onclick="lotCopyKa()" style="flex:1;padding:10px;background:linear-gradient(135deg,#3b82f6,#2563eb);color:white;border:none;border-radius:10px;font-weight:700;font-family:inherit;cursor:pointer;font-size:13px;">📋 Copy All</button>
-          <button onclick="lotAllSent()" style="flex:1;padding:10px;background:linear-gradient(135deg,var(--primary),var(--primary-dark));color:white;border:none;border-radius:10px;font-weight:700;font-family:inherit;cursor:pointer;font-size:13px;">✓ အားလုံးပို့ပြီး</button>
-        </div>` : ''}
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+        <h3 style="margin:0;">🔄 ပြန်ကာရန် (${pending.length})</h3>
+        <b style="color:#d97706;font-variant-numeric:tabular-nums;">${fmt(pendingTotal)}</b>
+      </div>
+
+      <!-- Manual add (ကြိုကာ) -->
+      <div style="display:flex;gap:6px;margin-bottom:10px;">
+        <input id="kaAddNum" maxlength="2" inputmode="numeric" placeholder="00"
+          style="width:64px;text-align:center;font-family:monospace;font-weight:800;font-size:15px;border:1.5px solid var(--border);border-radius:10px;padding:9px 0;">
+        <input id="kaAddAmt" inputmode="numeric" placeholder="ပမာဏ"
+          style="flex:1;text-align:right;font-weight:700;border:1.5px solid var(--border);border-radius:10px;padding:9px 12px;font-family:inherit;font-variant-numeric:tabular-nums;">
+        <button onclick="lotKaAdd()" class="nav-btn" style="width:auto;padding:0 16px;font-size:13px;">➕ ထည့်</button>
+      </div>
+
       ${pending.map(f => `
-        <div style="display:flex;align-items:center;gap:10px;padding:9px 8px;background:#fef3c7;border-radius:10px;margin-bottom:5px;">
+        <div style="display:flex;align-items:center;gap:8px;padding:9px 8px;background:#fef3c7;border-radius:10px;margin-bottom:5px;">
           <b style="font-family:monospace;font-size:17px;">${f.number}</b>
-          <span style="flex:1;font-weight:700;">${fmt(f.amount)}</span>
-          <button onclick="lotKaSent('${f.id}')" style="background:#16a34a;color:white;border:none;border-radius:8px;padding:5px 10px;font-size:12px;cursor:pointer;font-family:inherit;">✓ ပို့ပြီး</button>
+          <span onclick="lotKaEdit('${f.id}')" style="flex:1;font-weight:700;font-variant-numeric:tabular-nums;cursor:pointer;text-decoration:underline dotted #d97706;">${fmt(f.amount)}</span>
+          <button onclick="lotKaEdit('${f.id}')" style="background:none;border:none;font-size:14px;cursor:pointer;">✏️</button>
+          <button onclick="lotKaSent('${f.id}')" style="background:#16a34a;color:white;border:none;border-radius:8px;padding:5px 10px;font-size:12px;cursor:pointer;font-family:inherit;">✓</button>
           <button onclick="lotKaDelete('${f.id}')" style="background:none;border:none;font-size:15px;cursor:pointer;">🗑️</button>
         </div>`).join('') || '<p style="color:#9ca3af;font-size:13px;text-align:center;padding:8px;">ကာစရာ မရှိပါ</p>'}
+
+      ${pending.length > 0 ? `
+        <!-- Copy / Viber preview -->
+        <div style="background:#1f2937;color:#d1fae5;border-radius:12px;padding:12px 14px;font-family:monospace;font-size:12.5px;line-height:1.8;margin:10px 0;white-space:pre-wrap;">${preview}</div>
+        <div style="display:flex;gap:8px;">
+          <button onclick="lotCopyKa()" style="flex:1;padding:11px;background:linear-gradient(135deg,#3b82f6,#2563eb);color:white;border:none;border-radius:10px;font-weight:700;font-family:inherit;cursor:pointer;font-size:13px;">📋 Copy</button>
+          <button onclick="lotKaViber()" style="flex:1;padding:11px;background:linear-gradient(135deg,#7c3aed,#6d28d9);color:white;border:none;border-radius:10px;font-weight:700;font-family:inherit;cursor:pointer;font-size:13px;">📨 Viber ပို့</button>
+          <button onclick="lotAllSent()" style="flex:1;padding:11px;background:linear-gradient(135deg,var(--primary),var(--primary-dark));color:white;border:none;border-radius:10px;font-weight:700;font-family:inherit;cursor:pointer;font-size:13px;">✓ ပို့ပြီး</button>
+        </div>` : ''}
+
       ${sent.length > 0 ? `
         <h3 style="margin-top:14px;color:#9ca3af;">ပို့ပြီးသား (${sent.length})</h3>
         ${sent.map(f => `
@@ -1097,15 +1139,40 @@ function renderKa(el) {
     </div>`;
 }
 
+window.lotKaAdd = async function() {
+  const n = document.getElementById('kaAddNum').value.trim();
+  const a = Number((document.getElementById('kaAddAmt').value || '').replace(/[^0-9]/g, ''));
+  if (!/^\d{2}$/.test(n) || a <= 0) { alert('နံပါတ် ၂ လုံး + ပမာဏ ထည့်ပါ'); return; }
+  currentDraw.forwards.push({ id: genId(), number: n, amount: a, status: 'pending' });
+  await saveDraw();
+  renderDrawDetail();
+};
+
+window.lotKaEdit = async function(id) {
+  const f = currentDraw.forwards.find(x => x.id === id);
+  if (!f) return;
+  const val = prompt(`${f.number} — ကာပမာဏ ပြင်ရန်:`, f.amount);
+  if (val === null) return;
+  const amt = Number(String(val).replace(/[^0-9]/g, ''));
+  if (amt <= 0) return;
+  f.amount = amt;
+  await saveDraw();
+  renderDrawDetail();
+};
+
 window.lotCopyKa = function() {
-  const pending = currentDraw.forwards.filter(f => f.status === 'pending');
-  const merged = {};
-  pending.forEach(f => merged[f.number] = (merged[f.number] || 0) + f.amount);
-  let total = 0;
-  let text = Object.entries(merged).map(([n, a]) => { total += a; return `${n} = ${a.toLocaleString()}`; }).join('\n');
-  text += `\n----------------------------\nTotal = ${total.toLocaleString()}`;
+  const text = kaPendingText();
+  if (!text) return;
   navigator.clipboard.writeText(text);
-  alert('📋 Copy ပြီးပါပြီ\n\n' + text);
+  alert('📋 Copy ပြီးပါပြီ — Viber မှာ paste လုပ်ပါ');
+};
+
+window.lotKaViber = function() {
+  const text = kaPendingText();
+  if (!text) return;
+  // backup copy in case Viber doesn't open
+  try { navigator.clipboard.writeText(text); } catch (e) { /* ignore */ }
+  location.href = 'viber://forward?text=' + encodeURIComponent(text);
 };
 
 window.lotAllSent = async function() {
