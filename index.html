@@ -109,10 +109,10 @@
           <tr>
             <th>#</th>
             <th class="th-bet">ထိုးငွေ</th>
+            <th class="th-ka">ကာငွေ</th>
             <th class="th-win">ပေါက်</th>
-            <th>P/L</th>
-            <th class="th-ka">ကာ P/L</th>
-            <th class="th-daily">တစ်ရက်စာ</th>
+            <th>တစ်ကြိမ်<br>P/L</th>
+            <th class="th-daily">တစ်ရက်<br>P/L</th>
           </tr>
         </thead>
         <tbody id="tbody"></tbody>
@@ -120,9 +120,9 @@
           <tr class="sum-row">
             <td>Σ</td>
             <td id="sumBet">0</td>
+            <td id="sumKaAmt">0</td>
             <td id="sumWin">0</td>
             <td id="sumPL">0</td>
-            <td id="sumKa">0</td>
             <td id="sumDay">0</td>
           </tr>
           <tr class="grand-row">
@@ -746,7 +746,7 @@
 </nav>
 
 <link rel="manifest" href="manifest.json">
-<link rel="stylesheet" href="styles.css?v=42">
+<link rel="stylesheet" href="styles.css?v=43">
 
 <!-- PWA: Install banner & Update banner & Offline indicator -->
 <div id="pwaInstallBanner" class="pwa-banner install-banner" style="display:none;">
@@ -764,8 +764,8 @@
   <span>📴 Offline — Cached data ပြနေ</span>
 </div>
 
-<script type="module" src="firebase-config.js?v=42"></script>
-<script type="module" src="app.js?v=42"></script>
+<script type="module" src="firebase-config.js?v=43"></script>
+<script type="module" src="app.js?v=43"></script>
 
 <script>
   // ========== PWA Service Worker ==========

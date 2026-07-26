@@ -10,7 +10,7 @@ import {
   initializeFirestore, persistentLocalCache, persistentMultipleTabManager
 } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js";
 import { firebaseConfig, FIREBASE_ENABLED } from "./firebase-config.js";
-import { initLottery, renderDrawList, renderLotSettings, openShareSheet } from "./draw.js?v=42";
+import { initLottery, renderDrawList, renderLotSettings, openShareSheet } from "./draw.js?v=43";
 
 const SESSIONS = [
   { day: 1, dayName: 'တနင်္လာ', session: 'morning', label: 'မနက်' },
@@ -366,12 +366,12 @@ function buildTable() {
         <input type="text" id="bet_${i}" readonly placeholder="0"
                onclick="openNumpad(this, ${i}, 'bet')">
       </td>
+      <td class="ka-cell empty" id="ka_${i}" onclick="openKaSheet(${i})">＋</td>
       <td class="input-cell win">
         <input type="text" id="win_${i}" readonly placeholder="0"
                onclick="openNumpad(this, ${i}, 'win')">
       </td>
       <td class="pl-cell" id="pl_${i}">0</td>
-      <td class="ka-cell empty" id="ka_${i}" onclick="openKaSheet(${i})">＋</td>
       <td class="daily-cell" id="daily_${i}">${isEvening ? '0' : ''}</td>
     `;
     tbody.appendChild(tr);
@@ -452,38 +452,42 @@ function getValue(id) {
 window.recalc = function() {
   const commRate = Number(document.getElementById('commRate').value) / 100;
   const payoutMult = Number(document.getElementById('payoutMult').value);
-  let totBets = 0, totComm = 0, totPay = 0, totPL = 0, totWin = 0, totKa = 0;
-  const sessionPLs = [];
-  const sessionKas = [];
+  let totBets = 0, totComm = 0, totPay = 0, totPL = 0, totWin = 0, totKa = 0, totKaAmt = 0;
+  const sessionPLs = []; // combined per-session P/L (sell + ka)
 
   for (let i = 0; i < SESSIONS.length; i++) {
     const bet = getValue('bet_' + i);
     const win = getValue('win_' + i);
     const comm = Math.round(bet * commRate);
     const payout = win * payoutMult;
-    const pl = bet - comm - payout;
-    sessionPLs[i] = pl;
+    const sellPl = bet - comm - payout;
 
+    // Ka (forwarded to other dealers)
+    const kaEntries = weekKa[i] || [];
+    const hasKa = kaEntries.some(e => Number(e.amount) || Number(e.win));
+    const kaAmt = kaEntries.reduce((s, e) => s + (Number(e.amount) || 0), 0);
+    const kpl = kaRowPL(i, payoutMult);
+
+    const combined = sellPl + kpl; // တစ်ကြိမ်စာ P/L
+    sessionPLs[i] = combined;
+
+    // တစ်ကြိမ်စာ P/L cell (sell + ka)
     const plCell = document.getElementById('pl_' + i);
     if (plCell) {
-      if (bet > 0 || win > 0) {
-        plCell.textContent = fmtAutoSigned(pl);
-        plCell.title = fmtSigned(pl); // full value on hover/long-press
-        plCell.className = 'pl-cell ' + (pl >= 0 ? 'positive' : 'negative');
+      if (bet > 0 || win > 0 || hasKa) {
+        plCell.textContent = fmtAutoSigned(combined);
+        plCell.title = fmtSigned(combined);
+        plCell.className = 'pl-cell ' + (combined >= 0 ? 'positive' : 'negative');
       } else { plCell.textContent = ''; plCell.className = 'pl-cell'; }
     }
 
-    // Ka (forwarded to other dealers) P/L
-    const kaEntries = weekKa[i] || [];
-    const hasKa = kaEntries.some(e => Number(e.amount) || Number(e.win));
-    const kpl = kaRowPL(i, payoutMult);
-    sessionKas[i] = kpl;
+    // ကာငွေ cell — total forwarded amount (click to open ka sheet)
     const kaCell = document.getElementById('ka_' + i);
     if (kaCell) {
-      if (hasKa) {
-        kaCell.textContent = fmtAutoSigned(kpl);
-        kaCell.title = fmtSigned(kpl);
-        kaCell.className = 'ka-cell ' + (kpl >= 0 ? 'positive' : 'negative');
+      if (kaAmt > 0) {
+        kaCell.textContent = fmtAuto(kaAmt);
+        kaCell.title = fmt(kaAmt);
+        kaCell.className = 'ka-cell';
       } else {
         kaCell.textContent = '＋';
         kaCell.title = '';
@@ -491,11 +495,12 @@ window.recalc = function() {
       }
     }
 
-    totBets += bet; totWin += win; totComm += comm; totPay += payout; totPL += pl; totKa += kpl;
+    totBets += bet; totWin += win; totComm += comm; totPay += payout;
+    totPL += sellPl; totKa += kpl; totKaAmt += kaAmt;
 
     if (SESSIONS[i].session === 'evening') {
-      // daily = sell + ka of both sessions
-      const daily = (sessionPLs[i - 1] || 0) + pl + (sessionKas[i - 1] || 0) + kpl;
+      // တစ်ရက်စာ P/L = combined (sell+ka) of both sessions
+      const daily = (sessionPLs[i - 1] || 0) + combined;
       const dailyCell = document.getElementById('daily_' + i);
       if (!dailyCell) continue;
       const morningBet = getValue('bet_' + (i - 1));
@@ -510,24 +515,25 @@ window.recalc = function() {
 
   const fee = Number(machineFee || 0);
   const net = totPL + totKa - fee;
+  const totComb = totPL + totKa; // combined weekly P/L
 
   const sumBetEl = document.getElementById('sumBet');
   const sumWinEl = document.getElementById('sumWin');
   const sumPLEl = document.getElementById('sumPL');
-  const sumKaEl = document.getElementById('sumKa');
+  const sumKaEl = document.getElementById('sumKaAmt');
   const sumDayEl = document.getElementById('sumDay');
   const grandEl = document.getElementById('grandTotal');
   sumBetEl.textContent = fmtAuto(totBets); sumBetEl.title = fmt(totBets);
   sumWinEl.textContent = fmtAuto(totWin); sumWinEl.title = fmt(totWin);
-  sumPLEl.textContent = fmtAutoSigned(totPL); sumPLEl.title = fmtSigned(totPL);
-  sumPLEl.style.color = totPL >= 0 ? '#86efac' : '#fca5a5';
+  sumPLEl.textContent = fmtAutoSigned(totComb); sumPLEl.title = fmtSigned(totComb);
+  sumPLEl.style.color = totComb >= 0 ? '#86efac' : '#fca5a5';
   if (sumKaEl) {
-    sumKaEl.textContent = fmtAutoSigned(totKa); sumKaEl.title = fmtSigned(totKa);
-    sumKaEl.style.color = totKa >= 0 ? '#86efac' : '#fca5a5';
+    sumKaEl.textContent = fmtAuto(totKaAmt); sumKaEl.title = fmt(totKaAmt);
+    sumKaEl.style.color = '#ddd6fe';
   }
   if (sumDayEl) {
-    sumDayEl.textContent = fmtAutoSigned(totPL + totKa); sumDayEl.title = fmtSigned(totPL + totKa);
-    sumDayEl.style.color = (totPL + totKa) >= 0 ? '#86efac' : '#fca5a5';
+    sumDayEl.textContent = fmtAutoSigned(totComb); sumDayEl.title = fmtSigned(totComb);
+    sumDayEl.style.color = totComb >= 0 ? '#86efac' : '#fca5a5';
   }
   grandEl.textContent = fmtAutoSigned(net); grandEl.title = fmtSigned(net);
 

@@ -411,11 +411,11 @@ table {
 }
 /* Column widths (in %) — sum = 100% */
 table th:nth-child(1), table td:nth-child(1) { width: 8%; }   /* # */
-table th:nth-child(2), table td:nth-child(2) { width: 21%; }  /* Total bet */
-table th:nth-child(3), table td:nth-child(3) { width: 15%; }  /* Win bet */
-table th:nth-child(4), table td:nth-child(4) { width: 20%; }  /* Sell P/L */
-table th:nth-child(5), table td:nth-child(5) { width: 18%; }  /* Ka P/L */
-table th:nth-child(6), table td:nth-child(6) { width: 18%; }  /* Daily */
+table th:nth-child(2), table td:nth-child(2) { width: 22%; }  /* Total bet */
+table th:nth-child(3), table td:nth-child(3) { width: 16%; }  /* Total ka amount */
+table th:nth-child(4), table td:nth-child(4) { width: 15%; }  /* Total win */
+table th:nth-child(5), table td:nth-child(5) { width: 19%; }  /* Session P/L */
+table th:nth-child(6), table td:nth-child(6) { width: 20%; }  /* Daily P/L */
 
 .th-ka {
   background: linear-gradient(135deg, #ede9fe 0%, #ddd6fe 100%) !important;
@@ -427,6 +427,7 @@ td.ka-cell {
   font-size: 12px;
   letter-spacing: -0.03em;
   cursor: pointer;
+  color: #6d28a9;
   background: rgba(237, 233, 254, 0.35) !important;
   white-space: nowrap;
   transition: background 0.15s;
