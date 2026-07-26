@@ -1090,11 +1090,49 @@ function kaPendingText() {
   return text;
 }
 
+// Dealer dropdown options
+function kaDealerOpts(selId) {
+  const ds = settings.kaDealers || [];
+  return `<option value="">— ဒိုင်ရွေး —</option>` +
+    ds.map(d => `<option value="${d.id}" ${d.id === selId ? 'selected' : ''}>${d.name} /${d.comm || 0}%</option>`).join('');
+}
+function kaDealerName(id) {
+  const d = (settings.kaDealers || []).find(x => x.id === id);
+  return d ? `${d.name} (${d.comm || 0}%)` : 'မသတ်မှတ်ရသေး';
+}
+// Dealer-friendly text for a set of forwards (group same amounts)
+function kaTextFor(list) {
+  const merged = {};
+  list.forEach(f => merged[f.number] = (merged[f.number] || 0) + f.amount);
+  const byAmt = {};
+  Object.entries(merged).forEach(([n, a]) => { (byAmt[a] = byAmt[a] || []).push(n); });
+  let total = 0; Object.values(merged).forEach(a => total += a);
+  let text = Object.entries(byAmt).sort((x, y) => Number(y[0]) - Number(x[0]))
+    .map(([amt, nums]) => `${nums.sort().join('.')} = ${Number(amt).toLocaleString()}`).join('\n');
+  text += `\n----------------------------\nTotal = ${total.toLocaleString()}`;
+  return text;
+}
+
 function renderKa(el) {
   const pending = currentDraw.forwards.filter(f => f.status === 'pending');
   const sent = currentDraw.forwards.filter(f => f.status === 'sent');
   const pendingTotal = pending.reduce((s, f) => s + f.amount, 0);
-  const preview = kaPendingText();
+  const hasDealers = (settings.kaDealers || []).length > 0;
+
+  // group pending by dealerId
+  const groups = {};
+  pending.forEach(f => { const k = f.dealerId || ''; (groups[k] = groups[k] || []).push(f); });
+  const groupKeys = Object.keys(groups).sort((a, b) => (a === '' ? 1 : b === '' ? -1 : 0));
+
+  const rowHtml = (f) => `
+    <div style="display:flex;align-items:center;gap:6px;padding:8px;background:#fef3c7;border-radius:10px;margin-bottom:5px;flex-wrap:wrap;">
+      <b style="font-family:monospace;font-size:17px;width:28px;">${f.number}</b>
+      <span onclick="lotKaEdit('${f.id}')" style="font-weight:700;font-variant-numeric:tabular-nums;cursor:pointer;text-decoration:underline dotted #d97706;min-width:64px;">${fmt(f.amount)}</span>
+      <select onchange="lotKaAssign('${f.id}', this.value)" style="flex:1;min-width:110px;border:1px solid #e5d5b0;border-radius:8px;padding:6px;font-family:inherit;font-size:12px;background:white;">${kaDealerOpts(f.dealerId)}</select>
+      <button onclick="lotKaSplit('${f.id}')" title="ဒိုင်ခွဲ" style="background:none;border:none;font-size:15px;cursor:pointer;">✂️</button>
+      <button onclick="lotKaSent('${f.id}')" style="background:#16a34a;color:white;border:none;border-radius:8px;padding:5px 9px;font-size:12px;cursor:pointer;font-family:inherit;">✓</button>
+      <button onclick="lotKaDelete('${f.id}')" style="background:none;border:none;font-size:15px;cursor:pointer;">🗑️</button>
+    </div>`;
 
   el.innerHTML = `
     <div class="card">
@@ -1102,40 +1140,45 @@ function renderKa(el) {
         <h3 style="margin:0;">🔄 ပြန်ကာရန် (${pending.length})</h3>
         <b style="color:#d97706;font-variant-numeric:tabular-nums;">${fmt(pendingTotal)}</b>
       </div>
+      ${!hasDealers ? '<p style="background:#fffbeb;border:1px solid #fcd34d;border-radius:8px;padding:8px 10px;font-size:11.5px;color:#92400e;margin-bottom:8px;">💡 ကာဒိုင်များကို ⚙️ Setting မှာ အရင်ထည့်ပါ — ဒိုင်အလိုက် ခွဲကာ/ပို့လို့ရမယ်</p>' : ''}
 
       <!-- Manual add (ကြိုကာ) -->
-      <div style="display:flex;gap:6px;margin-bottom:10px;">
+      <div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap;">
         <input id="kaAddNum" maxlength="2" inputmode="numeric" placeholder="00"
-          style="width:64px;text-align:center;font-family:monospace;font-weight:800;font-size:15px;border:1.5px solid var(--border);border-radius:10px;padding:9px 0;">
+          style="width:56px;text-align:center;font-family:monospace;font-weight:800;font-size:15px;border:1.5px solid var(--border);border-radius:10px;padding:9px 0;">
         <input id="kaAddAmt" inputmode="numeric" placeholder="ပမာဏ"
-          style="flex:1;text-align:right;font-weight:700;border:1.5px solid var(--border);border-radius:10px;padding:9px 12px;font-family:inherit;font-variant-numeric:tabular-nums;">
-        <button onclick="lotKaAdd()" class="nav-btn" style="width:auto;padding:0 16px;font-size:13px;">➕ ထည့်</button>
+          style="flex:1;min-width:80px;text-align:right;font-weight:700;border:1.5px solid var(--border);border-radius:10px;padding:9px 12px;font-family:inherit;">
+        <select id="kaAddDealer" style="border:1.5px solid var(--border);border-radius:10px;padding:9px;font-family:inherit;font-size:12px;">${kaDealerOpts('')}</select>
+        <button onclick="lotKaAdd()" class="nav-btn" style="width:auto;padding:0 14px;font-size:13px;">➕</button>
       </div>
 
-      ${pending.map(f => `
-        <div style="display:flex;align-items:center;gap:8px;padding:9px 8px;background:#fef3c7;border-radius:10px;margin-bottom:5px;">
-          <b style="font-family:monospace;font-size:17px;">${f.number}</b>
-          <span onclick="lotKaEdit('${f.id}')" style="flex:1;font-weight:700;font-variant-numeric:tabular-nums;cursor:pointer;text-decoration:underline dotted #d97706;">${fmt(f.amount)}</span>
-          <button onclick="lotKaEdit('${f.id}')" style="background:none;border:none;font-size:14px;cursor:pointer;">✏️</button>
-          <button onclick="lotKaSent('${f.id}')" style="background:#16a34a;color:white;border:none;border-radius:8px;padding:5px 10px;font-size:12px;cursor:pointer;font-family:inherit;">✓</button>
-          <button onclick="lotKaDelete('${f.id}')" style="background:none;border:none;font-size:15px;cursor:pointer;">🗑️</button>
-        </div>`).join('') || '<p style="color:#9ca3af;font-size:13px;text-align:center;padding:8px;">ကာစရာ မရှိပါ</p>'}
-
-      ${pending.length > 0 ? `
-        <!-- Copy / Viber preview -->
-        <div style="background:#1f2937;color:#d1fae5;border-radius:12px;padding:12px 14px;font-family:monospace;font-size:12.5px;line-height:1.8;margin:10px 0;white-space:pre-wrap;">${preview}</div>
-        <div style="display:flex;gap:8px;">
-          <button onclick="lotCopyKa()" style="flex:1;padding:11px;background:linear-gradient(135deg,#3b82f6,#2563eb);color:white;border:none;border-radius:10px;font-weight:700;font-family:inherit;cursor:pointer;font-size:13px;">📋 Copy</button>
-          <button onclick="lotKaViber()" style="flex:1;padding:11px;background:linear-gradient(135deg,#7c3aed,#6d28d9);color:white;border:none;border-radius:10px;font-weight:700;font-family:inherit;cursor:pointer;font-size:13px;">📨 Viber ပို့</button>
-          <button onclick="lotAllSent()" style="flex:1;padding:11px;background:linear-gradient(135deg,var(--primary),var(--primary-dark));color:white;border:none;border-radius:10px;font-weight:700;font-family:inherit;cursor:pointer;font-size:13px;">✓ ပို့ပြီး</button>
-        </div>` : ''}
+      ${pending.length === 0 ? '<p style="color:#9ca3af;font-size:13px;text-align:center;padding:8px;">ကာစရာ မရှိပါ</p>' :
+        groupKeys.map(k => {
+          const list = groups[k];
+          const sub = list.reduce((s, f) => s + f.amount, 0);
+          return `
+          <div style="border:1.5px solid ${k ? '#ddd6fe' : '#e5e7eb'};border-radius:12px;padding:10px;margin-bottom:10px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+              <b style="color:${k ? '#7c3aed' : '#9ca3af'};font-size:13px;">🏷️ ${kaDealerName(k)}</b>
+              <b style="font-variant-numeric:tabular-nums;">${fmt(sub)}</b>
+            </div>
+            ${list.map(rowHtml).join('')}
+            ${k ? `
+              <div style="background:#1f2937;color:#d1fae5;border-radius:10px;padding:10px 12px;font-family:monospace;font-size:12px;line-height:1.7;margin:8px 0;white-space:pre-wrap;">${kaTextFor(list)}</div>
+              <div style="display:flex;gap:6px;">
+                <button onclick="lotCopyKaDealer('${k}')" style="flex:1;padding:9px;background:linear-gradient(135deg,#3b82f6,#2563eb);color:white;border:none;border-radius:9px;font-weight:700;font-family:inherit;cursor:pointer;font-size:12px;">📋 Copy</button>
+                <button onclick="lotViberKaDealer('${k}')" style="flex:1;padding:9px;background:linear-gradient(135deg,#7c3aed,#6d28d9);color:white;border:none;border-radius:9px;font-weight:700;font-family:inherit;cursor:pointer;font-size:12px;">📨 Viber</button>
+                <button onclick="lotSentKaDealer('${k}')" style="flex:1;padding:9px;background:linear-gradient(135deg,var(--primary),var(--primary-dark));color:white;border:none;border-radius:9px;font-weight:700;font-family:inherit;cursor:pointer;font-size:12px;">✓ ပို့ပြီး</button>
+              </div>` : '<p style="font-size:11px;color:#9ca3af;text-align:center;">⬆️ ဒိုင်ရွေးပြီးမှ Copy/ပို့လို့ရမယ်</p>'}
+          </div>`;
+        }).join('')}
 
       ${sent.length > 0 ? `
-        <h3 style="margin-top:14px;color:#9ca3af;">ပို့ပြီးသား (${sent.length})</h3>
+        <h3 style="margin-top:8px;color:#9ca3af;">ပို့ပြီးသား (${sent.length})</h3>
         ${sent.map(f => `
           <div style="display:flex;gap:10px;padding:7px 8px;color:#9ca3af;font-size:13px;border-bottom:1px solid #f3f4f6;">
             <b style="font-family:monospace;">${f.number}</b>
-            <span style="flex:1;">${fmt(f.amount)}</span>
+            <span style="flex:1;">${fmt(f.amount)}${f.dealerId ? ' · ' + kaDealerName(f.dealerId) : ''}</span>
             <span style="color:#16a34a;">✓ Sent</span>
           </div>`).join('')}` : ''}
     </div>`;
@@ -1144,8 +1187,9 @@ function renderKa(el) {
 window.lotKaAdd = async function() {
   const n = document.getElementById('kaAddNum').value.trim();
   const a = Number((document.getElementById('kaAddAmt').value || '').replace(/[^0-9]/g, ''));
+  const dealerId = document.getElementById('kaAddDealer').value || '';
   if (!/^\d{2}$/.test(n) || a <= 0) { alert('နံပါတ် ၂ လုံး + ပမာဏ ထည့်ပါ'); return; }
-  currentDraw.forwards.push({ id: genId(), number: n, amount: a, status: 'pending' });
+  currentDraw.forwards.push({ id: genId(), number: n, amount: a, status: 'pending', dealerId });
   await saveDraw();
   renderDrawDetail();
 };
@@ -1162,23 +1206,54 @@ window.lotKaEdit = async function(id) {
   renderDrawDetail();
 };
 
-window.lotCopyKa = function() {
-  const text = kaPendingText();
-  if (!text) return;
-  navigator.clipboard.writeText(text);
-  alert('📋 Copy ပြီးပါပြီ — Viber မှာ paste လုပ်ပါ');
+window.lotKaAssign = async function(id, dealerId) {
+  const f = currentDraw.forwards.find(x => x.id === id);
+  if (!f) return;
+  f.dealerId = dealerId || '';
+  await saveDraw();
+  renderDrawDetail();
 };
 
-window.lotKaViber = function() {
-  const text = kaPendingText();
-  if (!text) return;
-  // backup copy in case Viber doesn't open
+// Split one forward into two dealers
+window.lotKaSplit = async function(id) {
+  const f = currentDraw.forwards.find(x => x.id === id);
+  if (!f) return;
+  if ((settings.kaDealers || []).length < 1) { alert('ကာဒိုင် အရင်ထည့်ပါ (Setting)'); return; }
+  const val = prompt(`${f.number} (${fmt(f.amount)}) — ဒုတိယဒိုင်ကို ဘယ်လောက် ခွဲမလဲ?`, Math.floor(f.amount / 2));
+  if (val === null) return;
+  const splitAmt = Number(String(val).replace(/[^0-9]/g, ''));
+  if (splitAmt <= 0 || splitAmt >= f.amount) { alert('ခွဲပမာဏက မူရင်းထက် နည်းရမယ်'); return; }
+  // choose 2nd dealer
+  const ds = settings.kaDealers;
+  const list = ds.map((d, i) => `${i + 1}. ${d.name} (${d.comm || 0}%)`).join('\n');
+  const pick = prompt(`ဒုတိယဒိုင် ရွေးပါ:\n${list}`, '1');
+  if (pick === null) return;
+  const idx = Number(pick) - 1;
+  if (idx < 0 || idx >= ds.length) { alert('ဒိုင်နံပါတ် မမှန်ပါ'); return; }
+  f.amount -= splitAmt;
+  currentDraw.forwards.push({ id: genId(), number: f.number, amount: splitAmt, status: 'pending', dealerId: ds[idx].id });
+  await saveDraw();
+  renderDrawDetail();
+};
+
+function kaDealerPending(dealerId) {
+  return currentDraw.forwards.filter(f => f.status === 'pending' && (f.dealerId || '') === dealerId);
+}
+
+window.lotCopyKaDealer = function(dealerId) {
+  const text = kaTextFor(kaDealerPending(dealerId));
+  navigator.clipboard.writeText(text);
+  alert(`📋 ${kaDealerName(dealerId)} — Copy ပြီးပါပြီ`);
+};
+
+window.lotViberKaDealer = function(dealerId) {
+  const text = kaTextFor(kaDealerPending(dealerId));
   try { navigator.clipboard.writeText(text); } catch (e) { /* ignore */ }
   location.href = 'viber://forward?text=' + encodeURIComponent(text);
 };
 
-window.lotAllSent = async function() {
-  currentDraw.forwards.forEach(f => { if (f.status === 'pending') f.status = 'sent'; });
+window.lotSentKaDealer = async function(dealerId) {
+  kaDealerPending(dealerId).forEach(f => f.status = 'sent');
   await saveDraw();
   renderDrawDetail();
 };
@@ -1352,6 +1427,23 @@ export async function renderLotSettings() {
     </div>
 
     <div class="card">
+      <h3>🔄 ကာဒိုင်များ (အထက်ဒိုင်)</h3>
+      <p style="font-size:11.5px;color:#9ca3af;margin-bottom:8px;">ကိုယ်က ပြန်ကာတဲ့ဒိုင်များ + သူတို့ပေးတဲ့ ကော် %</p>
+      <div style="display:flex;gap:6px;margin-bottom:10px;">
+        <input id="lotKdName" placeholder="ဒိုင်နာမည်" style="flex:2;border:1.5px solid var(--border);border-radius:10px;padding:9px;font-family:inherit;">
+        <input id="lotKdComm" placeholder="ကော် %" type="number" inputmode="decimal" style="flex:1;border:1.5px solid var(--border);border-radius:10px;padding:9px;font-family:inherit;">
+        <button onclick="lotAddKaDealer()" class="nav-btn" style="width:auto;padding:0 14px;font-size:13px;">+ ထည့်</button>
+      </div>
+      ${(settings.kaDealers || []).map(d => `
+        <div class="week-row">
+          <div class="wk-info"><div class="wk-date">${d.name}</div></div>
+          <span style="color:#7c3aed;font-weight:700;">${d.comm || 0}%</span>
+          <button onclick="lotEditKaDealer('${d.id}')" style="background:none;border:none;font-size:15px;cursor:pointer;">✏️</button>
+          <button onclick="lotDelKaDealer('${d.id}')" style="background:none;border:none;font-size:15px;cursor:pointer;">🗑️</button>
+        </div>`).join('') || '<p style="color:#9ca3af;font-size:13px;text-align:center;">မရှိသေးပါ</p>'}
+    </div>
+
+    <div class="card">
       <h3>⚙️ 2D Settings</h3>
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px;">
         <label style="font-size:11px;color:#6b7280;font-weight:700;">Limit<input id="lotSetLimit" type="number" inputmode="numeric" value="${settings.defaultLimit}" style="width:100%;border:1.5px solid var(--border);border-radius:8px;padding:8px;font-family:inherit;font-weight:700;margin-top:3px;"></label>
@@ -1420,6 +1512,37 @@ window.lotAddAgent = async function() {
   await setDoc(doc(db, 'users', uid, 'agents', id), { name, comm });
   agents.push({ id, name, comm });
   agents.sort((a, b) => a.name.localeCompare(b.name));
+  renderLotSettings();
+};
+
+// ===== Ka dealers (uplines) =====
+window.lotAddKaDealer = async function() {
+  const name = document.getElementById('lotKdName').value.trim();
+  const comm = Number(document.getElementById('lotKdComm').value || 0);
+  if (!name) return;
+  if (!settings.kaDealers) settings.kaDealers = [];
+  settings.kaDealers.push({ id: genId(), name, comm });
+  await saveSettings();
+  renderLotSettings();
+};
+
+window.lotEditKaDealer = async function(id) {
+  const d = (settings.kaDealers || []).find(x => x.id === id);
+  if (!d) return;
+  const name = prompt('ကာဒိုင် နာမည်:', d.name);
+  if (name === null) return;
+  const comm = prompt('ကော် %:', d.comm || 0);
+  if (comm === null) return;
+  d.name = name.trim() || d.name;
+  d.comm = Number(comm) || 0;
+  await saveSettings();
+  renderLotSettings();
+};
+
+window.lotDelKaDealer = async function(id) {
+  if (!confirm('ဒီကာဒိုင်ကို ဖျက်မလား?')) return;
+  settings.kaDealers = (settings.kaDealers || []).filter(x => x.id !== id);
+  await saveSettings();
   renderLotSettings();
 };
 
