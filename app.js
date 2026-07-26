@@ -10,7 +10,7 @@ import {
   initializeFirestore, persistentLocalCache, persistentMultipleTabManager
 } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js";
 import { firebaseConfig, FIREBASE_ENABLED } from "./firebase-config.js";
-import { initLottery, renderDrawList, renderLotSettings, openShareSheet } from "./draw.js";
+import { initLottery, renderDrawList, renderLotSettings, openShareSheet } from "./draw.js?v=42";
 
 const SESSIONS = [
   { day: 1, dayName: 'တနင်္လာ', session: 'morning', label: 'မနက်' },

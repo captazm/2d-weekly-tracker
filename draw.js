@@ -1276,23 +1276,46 @@ function renderResult(el) {
   const settled = currentDraw.status === 'settled';
   const tot = currentDraw.totals || {};
 
-  // ကာဂဏာန်း receivable — winning number amount forwarded (sent) to other dealer
+  // ကာဒိုင် ရှင်းတမ်း — winning number forwarded (sent) to uplines: recovery + ka P/L per dealer
   let kaCard = '';
   if (settled && currentDraw.winningNumber) {
-    const kaAmt = currentDraw.forwards
-      .filter(f => f.status === 'sent' && f.number === currentDraw.winningNumber)
-      .reduce((s, f) => s + f.amount, 0);
-    if (kaAmt > 0) {
-      const kaRecovery = kaAmt * settings.payoutMult;
+    const win = currentDraw.winningNumber;
+    const sent = currentDraw.forwards.filter(f => f.status === 'sent');
+    const byDealer = {};
+    sent.forEach(f => {
+      const key = f.dealerId || '_none';
+      if (!byDealer[key]) byDealer[key] = { total: 0, winAmt: 0 };
+      byDealer[key].total += f.amount;
+      if (f.number === win) byDealer[key].winAmt += f.amount;
+    });
+    const rows = Object.entries(byDealer).map(([key, v]) => {
+      const d = (settings.kaDealers || []).find(x => x.id === key);
+      const comm = d ? d.comm : 0;
+      const name = d ? d.name : 'ဒိုင် (မသတ်မှတ်)';
+      const payout = v.winAmt * settings.payoutMult;
+      const netPaid = Math.round(v.total * (1 - comm / 100));
+      return { name, comm, total: v.total, winAmt: v.winAmt, payout, netPaid, pl: payout - netPaid };
+    }).filter(r => r.winAmt > 0); // ပေါက်သီး ကာထားတဲ့ ဒိုင်တွေပဲ ပြ
+    if (rows.length > 0) {
+      const totPay = rows.reduce((s, r) => s + r.payout, 0);
+      const totPL  = rows.reduce((s, r) => s + r.pl, 0);
       kaCard = `
-        <div style="display:flex;align-items:center;gap:14px;background:#f0fdf4;border:1.5px solid #86efac;border-radius:14px;padding:14px;margin-top:10px;">
-          <b style="font-family:monospace;font-size:26px;color:#16a34a;">${currentDraw.winningNumber}</b>
-          <div style="flex:1;">
-            <div style="font-size:12px;color:#6b7280;">ကာဂဏာန်း — တခြားဒိုင်ဆီက ရရန်</div>
-            <div style="font-size:12.5px;color:#6b7280;">ကာထား ${fmt(kaAmt)}</div>
-          </div>
-          <b style="color:#16a34a;font-size:17px;">+${fmt(kaRecovery)}</b>
-        </div>`;
+        <h3 style="margin-top:14px;">🔄 ကာဒိုင်ဆီက ပြန်ရ (ပေါက် ${win})</h3>
+        ${rows.map(r => `
+          <div style="background:#f0fdf4;border:1.5px solid #86efac;border-radius:14px;padding:13px;margin-bottom:8px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:7px;">
+              <b style="font-size:14px;">${r.name} <span style="color:#6b7280;font-weight:600;font-size:12px;">/${r.comm}%</span></b>
+              <b class="${r.pl>=0?'positive':'negative'}" style="font-size:17px;">${fmtSigned(r.pl)}</b>
+            </div>
+            <div style="display:flex;justify-content:space-between;font-size:12.5px;padding:2px 0;"><span style="color:#6b7280;">ပေါက်ငွေ (ကာတင်)</span><b>${fmt(r.winAmt)}</b></div>
+            <div style="display:flex;justify-content:space-between;font-size:12.5px;padding:2px 0;"><span style="color:#6b7280;">စုစုပေါင်း ကာတင်ပမာဏ</span><b>${fmt(r.total)}</b></div>
+            <div style="display:flex;justify-content:space-between;font-size:12.5px;padding:2px 0;"><span style="color:#6b7280;">အလျော်ရငွေ ×${settings.payoutMult}</span><b style="color:#16a34a;">+${fmt(r.payout)}</b></div>
+          </div>`).join('')}
+        ${rows.length > 1 ? `
+          <div style="display:flex;justify-content:space-between;align-items:center;background:#ecfdf5;border:1.5px solid #86efac;border-radius:12px;padding:12px 14px;font-size:14px;">
+            <b>ကာ စုစုပေါင်း</b>
+            <span>အလျော်ရ <b style="color:#16a34a;">+${fmt(totPay)}</b> · P/L <b class="${totPL>=0?'positive':'negative'}">${fmtSigned(totPL)}</b></span>
+          </div>` : ''}`;
     }
   }
 
